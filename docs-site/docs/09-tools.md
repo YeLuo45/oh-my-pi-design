@@ -1,14 +1,14 @@
-# 09 · 32 Built-in Tools
+# 09 · 32 个内建工具
 
-oh-my-pi ships **32 built-in tools** organized by purpose. The agent sees them as ordinary tool calls; the runtime dispatches to the right implementation (TypeScript, Rust NAPI, LSP server, DAP adapter, etc.). This page is the canonical reference for what each tool does and when to use it.
+oh-my-pi 内置 **32 个工具**，按用途分类。Agent 把它们当作普通工具调用；运行时分派到正确的实现（TypeScript、Rust NAPI、LSP server、DAP adapter 等）。本页面是每个工具的作用及何时使用的规范参考。
 
-**Source:** `packages/coding-agent/src/core/tools/` (10 categories, 32 tool definitions)
+**源码：** `packages/coding-agent/src/core/tools/`（10 个类别，32 个工具定义）
 
-## The 10 categories
+## 10 个类别
 
 ```mermaid
 graph TB
-  Tools[32 Built-in Tools]
+  Tools[32 个内建工具]
   Tools --> File[File I/O · 5]
   Tools --> Shell[Shell · 2]
   Tools --> Edit[Edit Rust · 3]
@@ -23,49 +23,49 @@ graph TB
 
 ## File I/O (5)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `read` | Read a file with line numbers | ✗ |
-| `write` | Create/overwrite a file | ✗ |
-| `edit` | Substring find-and-replace | ✗ |
-| `glob` | Find files matching a pattern | ✗ |
-| `grep` | Search file contents (regex) | ✗ |
+| `read` | 读取带行号的文件 | ✗ |
+| `write` | 创建/覆盖文件 | ✗ |
+| `edit` | 子串查找并替换 | ✗ |
+| `glob` | 查找匹配模式的文件 | ✗ |
+| `grep` | 搜索文件内容（正则） | ✗ |
 
-Standard file operations, all in TypeScript. See the 5 file I/O entries in the table above for the tool list — the interface is the same as pi-mono.
+标准文件操作，全部用 TypeScript 实现。工具列表见上表 —— 接口与 pi-mono 一致。
 
-The `read` tool returns content in **standard** format (not hashline). For hashline format, use the [`hashline` tool](/docs/08-hashline).
+`read` 工具以**标准**格式（而非 hashline）返回内容。如需 hashline 格式，请使用 [`hashline` 工具](/docs/08-hashline)。
 
 ## Shell (2)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `bash` | Run a shell command | ✓ `pi-shell` |
-| `process` | Manage a backgrounded process | ✓ `pi-shell` |
+| `bash` | 运行 shell 命令 | ✓ `pi-shell` |
+| `process` | 管理后台进程 | ✓ `pi-shell` |
 
-Both delegated to the **Rust `pi-shell` crate** for safety (process group kill, output streaming, command minimizer). See [Rust Core](/docs/01-rust-core) for the implementation.
+两者都委托给 **Rust `pi-shell` crate** 以保证安全（进程组 kill、输出流式传输、命令最小化）。实现见 [Rust Core](/docs/01-rust-core)。
 
 ## Edit (Rust) (3)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `hashline` | Read a file with line:hash format | ✓ `pi-ast` |
-| `hashline_replace` | Replace lines (hash-verified) | ✓ `pi-ast` |
-| `hashline_insert` | Insert lines (hash-verified) | ✓ `pi-ast` |
+| `hashline` | 以 line:hash 格式读取文件 | ✓ `pi-ast` |
+| `hashline_replace` | 替换行（带哈希校验） | ✓ `pi-ast` |
+| `hashline_insert` | 插入行（带哈希校验） | ✓ `pi-ast` |
 
-The signature edit primitive. See [hashline](/docs/08-hashline).
+标志性的编辑原语。见 [hashline](/docs/08-hashline)。
 
 ## Snapshot (2)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `snap` | Snapshot the project filesystem | ✓ `pi-iso` |
-| `restore` | Restore a snapshot | ✓ `pi-iso` |
+| `snap` | 快照项目文件系统 | ✓ `pi-iso` |
+| `restore` | 恢复一个快照 | ✓ `pi-iso` |
 
-Cheap copy-on-write snapshots via the Rust `pi-iso` crate. See [Rust Core](/docs/01-rust-core) + [snapcompact](/docs/10-snapcompact).
+通过 Rust `pi-iso` crate 实现的廉价 copy-on-write 快照。见 [Rust Core](/docs/01-rust-core) + [snapcompact](/docs/10-snapcompact)。
 
 ## LSP (14)
 
-| Tool | LSP Method |
+| 工具 | LSP Method |
 |------|------------|
 | `lsp_hover` | `textDocument/hover` |
 | `lsp_definition` | `textDocument/definition` |
@@ -82,11 +82,11 @@ Cheap copy-on-write snapshots via the Rust `pi-iso` crate. See [Rust Core](/docs
 | `lsp_inlayHint` | `textDocument/inlayHint` |
 | `lsp_diagnostic` | `textDocument/diagnostic` |
 
-See [LSP](/docs/06-lsp).
+见 [LSP](/docs/06-lsp)。
 
 ## DAP (28)
 
-| Tool | DAP Method |
+| 工具 | DAP Method |
 |------|------------|
 | `dap_launch` | `launch` |
 | `dap_attach` | `attach` |
@@ -117,48 +117,48 @@ See [LSP](/docs/06-lsp).
 | `dap_goto` | `goto` |
 | `dap_reverseContinue` | `reverseContinue` |
 
-See [DAP](/docs/07-dap).
+见 [DAP](/docs/07-dap)。
 
 ## Search (2)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `web_search` | Search the web | ✗ |
-| `fetch_url` | Fetch a URL and convert to Markdown | ✗ |
+| `web_search` | 搜索网络 | ✗ |
+| `fetch_url` | 抓取 URL 并转为 Markdown | ✗ |
 
-Standard external lookups. Providers: Tavily, Brave, or custom (via `HttpDispatcher`).
+标准外部查询。提供方：Tavily、Brave 或自定义（通过 `HttpDispatcher`）。
 
 ## Memory (3)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `memory_read` | Read a memory entry | ✗ |
-| `memory_write` | Write a memory entry | ✗ |
-| `memory_list` | List memory entries | ✗ |
+| `memory_read` | 读取一条 memory | ✗ |
+| `memory_write` | 写入一条 memory | ✗ |
+| `memory_list` | 列出 memory 条目 | ✗ |
 
-Backed by [`pi-mnemopi`](/docs/11-pi-mnemopi) — the long-term memory system with semantic search.
+由 [`pi-mnemopi`](/docs/11-pi-mnemopi) 提供支持 —— 带语义搜索的长期 memory 系统。
 
 ## Meta (3)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `todo_write` | Manage the internal task list | ✗ |
-| `skill` | Activate/deactivate a skill | ✗ |
-| `mode_switch` | Switch between modes | ✗ |
+| `todo_write` | 管理内部任务列表 | ✗ |
+| `skill` | 激活/停用一个 skill | ✗ |
+| `mode_switch` | 在模式之间切换 | ✗ |
 
-Standard meta tools, same as pi-mono.
+标准 meta 工具，与 pi-mono 相同。
 
 ## Research (1)
 
-| Tool | Purpose | Native? |
+| 工具 | 用途 | 原生? |
 |------|---------|---------|
-| `autoresearch` | Search the agent's own codebase for context | ✗ |
+| `autoresearch` | 在 Agent 自己的代码库中搜索上下文 | ✗ |
 
-A new tool unique to oh-my-pi. The agent can ask "how does the `hashline` tool work?" and get a relevant code snippet from the pre-embedded omp codebase.
+oh-my-pi 独有的新工具。Agent 可以问 "hashline 工具是怎么工作的？"，并从预嵌入的 omp 代码库中拿到相关代码片段。
 
-## The tool contract
+## 工具契约
 
-Same as pi-mono — TypeBox schema + execute function:
+和 pi-mono 一样 —— TypeBox schema + execute 函数：
 
 ```ts
 import { Type, type Static } from "typebox";
@@ -174,7 +174,7 @@ const myTool: AgentTool<typeof MyArgs> = {
   name: "my_tool",
   description: "An example tool",
   inputSchema: MyArgs,
-  requiredCapabilities: [],  // oh-my-pi addition
+  requiredCapabilities: [],  // oh-my-pi 新增
   optionalCapabilities: ["thinking"],
   async execute(args, ctx) {
     return { content: [{ type: "text", text: `Got: ${args.input}` }] };
@@ -182,15 +182,15 @@ const myTool: AgentTool<typeof MyArgs> = {
 };
 ```
 
-The `requiredCapabilities` and `optionalCapabilities` fields are new in oh-my-pi. The `capabilityFilter` in the agent loop uses them to hide tools the current model can't use.
+`requiredCapabilities` 与 `optionalCapabilities` 字段是 oh-my-pi 新加的。Agent 循环中的 `capabilityFilter` 会用它们来隐藏当前模型无法使用的工具。
 
-## The `ToolContext`
+## `ToolContext`
 
-Same as pi-mono, with 4 new fields:
+与 pi-mono 相同，但新增了 4 个字段：
 
 ```ts
 type ToolContext = {
-  // Original pi-mono fields
+  // 原有的 pi-mono 字段
   fs: FileSystem;
   process: ProcessRunner;
   fetch: HttpDispatcher;
@@ -198,20 +198,20 @@ type ToolContext = {
   state: AgentState;
   config: Config;
   log: Logger;
-  
-  // oh-my-pi additions
-  lsp: LspClientPool;          // LSP tool dispatcher
-  dap: DapClient;              // DAP tool dispatcher
-  hashline: HashlineNative;    // Native hashline operations
-  iso: IsoNative;              // Native pi-iso operations
+
+  // oh-my-pi 新增
+  lsp: LspClientPool;          // LSP 工具分派
+  dap: DapClient;              // DAP 工具分派
+  hashline: HashlineNative;    // 原生 hashline 操作
+  iso: IsoNative;              // 原生 pi-iso 操作
 };
 ```
 
-The 4 new fields are bound to the **native** implementations when available, with JS fallbacks.
+新增的 4 个字段在原生实现可用时绑定到原生实现，否则使用 JS 回退。
 
-## Tool filtering
+## 工具过滤
 
-The capability-based filter:
+基于能力的过滤器：
 
 ```ts
 function filterToolsForModel(tools: AgentTool[], model: Model): AgentTool[] {
@@ -221,11 +221,11 @@ function filterToolsForModel(tools: AgentTool[], model: Model): AgentTool[] {
 }
 ```
 
-For a model without `imageInput`, the `read_image` tool is hidden. For a model without `thinking`, the deep-refactor tools are hidden. The LLM never sees tools it can't use.
+对于没有 `imageInput` 的模型，`read_image` 工具会被隐藏。对于没有 `thinking` 的模型，深度重构工具会被隐藏。LLM 永远不会看到它不能用的工具。
 
-## Tool output format
+## 工具输出格式
 
-Same as pi-mono:
+与 pi-mono 相同：
 
 ```ts
 {
@@ -236,38 +236,38 @@ Same as pi-mono:
 }
 ```
 
-The `terminate: true` field is a hint to stop the agent after the current tool batch (only if all tools in the batch set it).
+`terminate: true` 字段是一个提示：在当前工具批次结束后停止 Agent（仅当该批次中的所有工具都设置了它时）。
 
-## Tool concurrency
+## 工具并发
 
-The agent can run tools in **parallel** (default for read-only tools):
+Agent 可以**并行**运行工具（只读工具的默认行为）：
 
 ```ts
-// The LLM sends multiple tool calls in one assistant message
+// LLM 在一条 assistant 消息中发送多个工具调用
 [
   { name: "lsp_hover", args: { file, line, char } },
   { name: "lsp_definition", args: { file, line, char } },
   { name: "lsp_references", args: { file, line, char } }
 ]
 
-// The agent loop executes them concurrently
-// tool_execution_end events fire in completion order
+// Agent 循环并发执行
+// tool_execution_end 事件按完成顺序触发
 ```
 
-For side-effecting tools (write, bash, hashline_replace), the default is **sequential**.
+对于有副作用的工具（write、bash、hashline_replace），默认是**串行**。
 
-## Cancellation
+## 取消
 
-`ctx.signal.aborted()` is checked between tool operations. The agent can be aborted by:
+`ctx.signal.aborted()` 会在工具操作之间被检查。Agent 可被以下方式中止：
 
-- User hitting Ctrl-C
-- Stop button in the TUI
-- Timeout (configurable per-tool)
-- Sub-agent completion (for `swarm-extension`)
+- 用户按下 Ctrl-C
+- TUI 中的停止按钮
+- 超时（可按工具配置）
+- 子 Agent 完成（针对 `swarm-extension`）
 
-## Tool telemetry
+## 工具遥测
 
-Every tool call is recorded via `omp-stats` (OpenTelemetry):
+每次工具调用都会通过 `omp-stats`（OpenTelemetry）记录：
 
 ```ts
 {
@@ -279,13 +279,13 @@ Every tool call is recorded via `omp-stats` (OpenTelemetry):
 }
 ```
 
-This is exported via OTLP to Datadog/Honeycomb/Tempo for monitoring.
+通过 OTLP 导出到 Datadog / Honeycomb / Tempo 用于监控。
 
-## Writing a new tool
+## 编写新工具
 
-Three steps:
+三步：
 
-1. Create `packages/coding-agent/src/core/tools/my-tool/index.ts`:
+1. 创建 `packages/coding-agent/src/core/tools/my-tool/index.ts`：
 
 ```ts
 import { Type, type Static } from "typebox";
@@ -307,46 +307,46 @@ const myTool: AgentTool<typeof MyArgs> = {
 export default myTool;
 ```
 
-2. Register in `packages/coding-agent/src/core/tools/index.ts`:
+2. 在 `packages/coding-agent/src/core/tools/index.ts` 中注册：
 
 ```ts
 import myTool from "./my-tool/index.js";
 
 export const BUILTIN_TOOLS: AgentTool[] = [
-  // ... existing 32
+  // ... 现有 32 个
   myTool
 ];
 ```
 
-3. Add to the system prompt (in `harness/system-prompt.ts`) if the tool needs usage guidance.
+3. 如果该工具需要使用指引，加入系统提示词（位于 `harness/system-prompt.ts`）。
 
-No change to the agent loop is needed.
+不需要修改 Agent 循环。
 
-## Tool discovery
+## 工具发现
 
-The TUI's `/tools` command shows:
+TUI 的 `/tools` 命令会展示：
 
-- All available tools
-- Required capabilities
-- Current call count (per session)
-- Average duration
-- Success rate
+- 所有可用工具
+- 必需的能力
+- 当前调用次数（按会话）
+- 平均耗时
+- 成功率
 
-Useful for debugging "why is the agent slow?" or "why is the X tool not being called?".
+可用于排查 "为什么 Agent 这么慢？" 或 "为什么 X 工具没被调用？"。
 
-## What hasn't changed from pi-mono
+## 相比 pi-mono 没变化的部分
 
-The 5 file I/O tools, 2 shell tools, 2 search tools, 3 memory tools, 3 meta tools are **the same as pi-mono** — same interface, same behavior. The agent code is drop-in compatible.
+5 个文件 I/O 工具、2 个 shell 工具、2 个搜索工具、3 个 memory 工具、3 个 meta 工具**与 pi-mono 相同** —— 接口、行为都一样。Agent 代码是直接可替换兼容的。
 
-The 14 LSP tools, 28 DAP tools, 3 hashline tools, 2 snapshot tools, 1 autoresearch tool are **new in oh-my-pi**.
+14 个 LSP 工具、28 个 DAP 工具、3 个 hashline 工具、2 个 snapshot 工具、1 个 autoresearch 工具是 **oh-my-pi 新增**。
 
-Total: 32 unique tools (62 tool names, but DAP and LSP have many subcommands that share infrastructure).
+总计：32 个独立工具（62 个工具名，但 DAP 和 LSP 拥有很多共用基础设施的子命令）。
 
-## Next
+## 接下来
 
-- [LSP](/docs/06-lsp) — the 14 LSP operations
-- [DAP](/docs/07-dap) — the 28 DAP operations
-- [hashline](/docs/08-hashline) — the 3 hashline tools
-- [snapcompact](/docs/10-snapcompact) — the 2 snapshot tools
-- [pi-mnemopi](/docs/11-pi-mnemopi) — the 3 memory tools
-- See [this file's tools reference](/docs/09-tools#the-10-categories) for the full list
+- [LSP](/docs/06-lsp) — 14 个 LSP 操作
+- [DAP](/docs/07-dap) — 28 个 DAP 操作
+- [hashline](/docs/08-hashline) — 3 个 hashline 工具
+- [snapcompact](/docs/10-snapcompact) — 2 个 snapshot 工具
+- [pi-mnemopi](/docs/11-pi-mnemopi) — 3 个 memory 工具
+- 完整列表见 [本文件工具参考](/docs/09-tools#the-10-categories)

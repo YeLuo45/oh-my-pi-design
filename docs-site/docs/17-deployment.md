@@ -1,42 +1,42 @@
-# 17 · Deployment & Installation
+# 17 · 部署与安装
 
-oh-my-pi ships in **5 installable shapes**: the official install script (recommended), Homebrew tap, npm, Bun global, and the pre-built GitHub release binary. All 5 install the same `omp` binary. The right choice depends on your platform and preferred update flow.
+oh-my-pi 提供 **5 种可安装形态**：官方安装脚本（推荐）、Homebrew tap、npm、Bun 全局安装，以及 GitHub Release 预编译二进制。这 5 种方式都会安装同一个 `omp` 二进制。选择哪一种取决于你的平台和偏好的更新流程。
 
-**Source:** `install/install.sh`, `install/install.ps1`, `Formula/omp.rb`, `Dockerfile`, `Dockerfile.robomp`
+**源码：** `install/install.sh`、`install/install.ps1`、`Formula/omp.rb`、`Dockerfile`、`Dockerfile.robomp`
 
-## The 5 install paths
+## 5 种安装路径
 
-| Path | Platform | Time | Updates |
+| 路径 | 平台 | 时间 | 更新方式 |
 |------|----------|------|---------|
-| **`curl \| sh`** | macOS · Linux | ~5s | `omp update --self` |
-| **Homebrew** | macOS · Linux | ~30s | `brew upgrade omp` |
-| **Bun global** | all | ~30s | `bun update -g` |
-| **PowerShell** | Windows | ~5s | `omp update --self` |
-| **Docker** | all | ~10s | re-pull image |
-| **mise** | all | ~5s | `mise use -g github:can1357/oh-my-pi` |
+| **`curl \| sh`** | macOS · Linux | 约 5s | `omp update --self` |
+| **Homebrew** | macOS · Linux | 约 30s | `brew upgrade omp` |
+| **Bun global** | 全部 | 约 30s | `bun update -g` |
+| **PowerShell** | Windows | 约 5s | `omp update --self` |
+| **Docker** | 全部 | 约 10s | 重新拉取镜像 |
+| **mise** | 全部 | 约 5s | `mise use -g github:can1357/oh-my-pi` |
 
-## Path 1: Install script (recommended)
+## 路径 1：安装脚本（推荐）
 
 ```sh
 # macOS · Linux
 curl -fsSL https://omp.sh/install | sh
 ```
 
-The script:
+该脚本会：
 
-1. Detects the OS (macOS / Linux) and arch (arm64 / x64)
-2. Downloads the matching `omp-<version>-<os>-<arch>.tar.gz` from the latest GitHub release
-3. Verifies the SHA-256 checksum
-4. Verifies the signature (`cosign verify` against the maintainer's key)
-5. Extracts to `/usr/local/bin/omp` (or `~/.local/bin/omp` if no sudo)
-6. Adds to the user's `PATH` (if not already)
-7. Prints the version
+1. 探测操作系统（macOS / Linux）和架构（arm64 / x64）
+2. 从最新的 GitHub Release 下载匹配的 `omp-<version>-<os>-<arch>.tar.gz`
+3. 校验 SHA-256 校验和
+4. 校验签名（使用 `cosign verify` 校验维护者密钥）
+5. 解压到 `/usr/local/bin/omp`（没有 sudo 时解压到 `~/.local/bin/omp`）
+6. 加入用户的 `PATH`（若尚未添加）
+7. 输出版本号
 
-The script is **idempotent** — re-running updates to the latest version.
+该脚本是 **幂等** 的 —— 重复运行会更新到最新版本。
 
-### Shell completions
+### Shell 补全
 
-The script also generates shell completions:
+脚本还会生成 shell 补全：
 
 ```sh
 # zsh
@@ -49,43 +49,43 @@ eval "$(omp completions bash)"
 omp completions fish > ~/.config/fish/completions/omp.fish
 ```
 
-The completions are generated **from the live command/flag metadata**, so they never drift from the actual CLI. Subcommands, flags, and enum values complete statically; model names (`--model`, `--smol`, `--slow`, `--plan`) resolve against the bundled model catalog; `--resume` against your on-disk sessions.
+补全是根据 **运行时的命令 / 标志元数据** 动态生成的，因此永远不会与实际 CLI 偏离。子命令、标志、枚举值以静态方式补全；模型名（`--model`、`--smol`、`--slow`、`--plan`）对照内置的模型目录解析；`--resume` 对照磁盘上的会话解析。
 
-## Path 2: Homebrew
+## 路径 2：Homebrew
 
 ```sh
 # macOS · Linux
 brew install can1357/tap/omp
 ```
 
-The tap is `github.com/can1357/homebrew-tap` (or similar — verify with `brew tap-info`). The formula is auto-generated from each release.
+Tap 为 `github.com/can1357/homebrew-tap`（或类似名称 —— 可用 `brew tap-info` 校验）。Formula 是从每个 Release 自动生成的。
 
-## Path 3: Bun global
+## 路径 3：Bun 全局安装
 
 ```sh
 bun install -g @oh-my-pi/pi-coding-agent
 ```
 
-This installs the npm package. The `omp` binary is at `node_modules/@oh-my-pi/pi-coding-agent/dist/cli.js`. Bun adds it to your `PATH` automatically.
+这会安装 npm 包。`omp` 二进制位于 `node_modules/@oh-my-pi/pi-coding-agent/dist/cli.js`。Bun 会自动把它加到你的 `PATH`。
 
-This path is **recommended for Bun users** — the binary is built and tested with Bun.
+这条路径 **推荐给 Bun 用户** —— 二进制是使用 Bun 构建和测试的。
 
-## Path 4: PowerShell (Windows)
+## 路径 4：PowerShell（Windows）
 
 ```powershell
 irm https://omp.sh/install.ps1 | iex
 ```
 
-The PowerShell script mirrors the bash script:
+PowerShell 脚本是 bash 脚本的镜像：
 
-1. Detects arch (x64 / arm64)
-2. Downloads `omp-<version>-windows-<arch>.zip`
-3. Verifies SHA-256 + signature
-4. Extracts to `%LOCALAPPDATA%\Programs\omp\`
-5. Adds to user PATH
-6. Registers the binary in Windows Defender allowlist (optional)
+1. 探测架构（x64 / arm64）
+2. 下载 `omp-<version>-windows-<arch>.zip`
+3. 校验 SHA-256 + 签名
+4. 解压到 `%LOCALAPPDATA%\Programs\omp\`
+5. 加入用户 PATH
+6. 将二进制登记到 Windows Defender 白名单（可选）
 
-## Path 5: Docker
+## 路径 5：Docker
 
 ```bash
 docker pull ghcr.io/can1357/omp:latest
@@ -95,18 +95,18 @@ docker run -it --rm \
   ghcr.io/can1357/omp:latest
 ```
 
-The image is based on `oven/bun:1.3.14-slim` (Debian slim + Bun). It includes:
+镜像基于 `oven/bun:1.3.14-slim`（Debian slim + Bun）。其中包括：
 
-- The `omp` binary
-- All Rust native modules
-- The default model catalog
-- Shell completions (zsh, bash, fish)
+- `omp` 二进制
+- 全部 Rust 原生模块
+- 默认模型目录
+- Shell 补全（zsh、bash、fish）
 
-Mount your project at `/workspace`. Inject API keys via env vars. The agent's writes go to the mounted volume.
+把你的项目挂载到 `/workspace`。通过环境变量注入 API key。Agent 的写入会落到挂载的卷上。
 
-### The `robomp` image
+### `robomp` 镜像
 
-A separate image for the **robomp** (agent-as-a-service) server:
+一个独立的镜像，用于 **robomp**（Agent 即服务）服务器：
 
 ```bash
 docker pull ghcr.io/can1357/robomp:latest
@@ -115,19 +115,19 @@ docker run -d -p 8080:8080 \
   ghcr.io/can1357/robomp:latest
 ```
 
-`robomp` is a long-running HTTP service. See [pi-wire](/docs/12-pi-wire) for the protocol.
+`robomp` 是一个长生命周期的 HTTP 服务。协议参见 [pi-wire](/docs/12-pi-wire)。
 
-## Path 6: mise (version pinning)
+## 路径 6：mise（版本钉死）
 
 ```sh
 mise use -g github:can1357/oh-my-pi
 ```
 
-`mise` (formerly rtx) is a version manager. It pins `omp` to a specific version in `~/.config/mise/config.toml`. Use this if you want **reproducible installs** (e.g. in CI).
+`mise`（前身是 rtx）是一个版本管理器。它会把 `omp` 钉到 `~/.config/mise/config.toml` 中的某个具体版本。在你希望 **可复现的安装**（比如 CI 中）时使用。
 
-## First-run
+## 首次运行
 
-When `omp` runs for the first time:
+`omp` 首次运行时会：
 
 ```bash
 $ omp
@@ -147,71 +147,71 @@ No API key found for anthropic. Choose a provider:
 >
 ```
 
-`omp` walks you through:
+`omp` 会引导你完成：
 
-1. **Provider selection** — pick from 42 providers
-2. **API key** — paste it; `omp` stores in the OS keychain (via `@napi-rs/keyring`)
-3. **Model selection** — pick the default model (filtered by capability)
-4. **Theme** — pick a TUI theme
-5. **Project trust** — confirm whether to trust the current directory
+1. **选择提供方** — 从 42 个提供方中挑选
+2. **API key** — 粘贴即可；`omp` 会存储到操作系统的 keychain（通过 `@napi-rs/keyring`）
+3. **选择模型** — 选择默认模型（按能力过滤）
+4. **主题** — 选择一个 TUI 主题
+5. **项目信任** — 确认是否信任当前目录
 
-Settings are persisted at `~/.omp/settings.json`. API keys are in the OS keychain (Keychain on macOS, libsecret on Linux, Credential Manager on Windows).
+设置保存在 `~/.omp/settings.json`。API key 存储在操作系统的 keychain（macOS 的 Keychain、Linux 的 libsecret、Windows 的 Credential Manager）。
 
-## Self-update
+## 自更新
 
 ```bash
 omp update --self
 ```
 
-The self-update:
+自更新流程：
 
-1. Queries the GitHub releases API for the latest version
-2. Compares to the current version
-3. Downloads the binary for the current platform
-4. Verifies the signature
-5. Atomically replaces the running binary (`mv`)
-6. Restarts the current session (if any)
+1. 查询 GitHub Releases API 获取最新版本
+2. 与当前版本对比
+3. 下载当前平台的二进制
+4. 校验签名
+5. 以原子操作替换运行中的二进制（`mv`）
+6. 重启当前会话（如果有）
 
-The `--ignore-scripts` flag is set automatically (self-update doesn't need lifecycle scripts).
+`--ignore-scripts` 标志会自动设置（自更新不需要 lifecycle 脚本）。
 
-## Updating via Homebrew
+## 通过 Homebrew 更新
 
 ```bash
 brew update && brew upgrade omp
 ```
 
-Standard Homebrew flow. The formula auto-bumps on each GitHub release.
+标准 Homebrew 流程。Formula 在每次 GitHub Release 时自动 bump。
 
-## Updating via Bun
+## 通过 Bun 更新
 
 ```bash
 bun update -g @oh-my-pi/pi-coding-agent
 ```
 
-Standard Bun flow.
+标准 Bun 流程。
 
-## Configuration files
+## 配置文件
 
-Three locations:
+三个位置：
 
-| File | Scope | Priority |
+| 文件 | 作用域 | 优先级 |
 |------|-------|----------|
-| `~/.omp/settings.json` | Global | Low |
-| `.omp/settings.json` | Project | Medium |
-| CLI flags | Session | High |
+| `~/.omp/settings.json` | 全局 | 低 |
+| `.omp/settings.json` | 项目 | 中 |
+| CLI 标志 | 会话 | 高 |
 
-Settings are **merged** in priority order. CLI flags override project overrides global.
+设置按优先级顺序 **合并**。CLI 标志覆盖项目设置，项目设置覆盖全局设置。
 
-## API key resolution
+## API key 解析
 
-omp resolves API keys in this order:
+omp 按以下顺序解析 API key：
 
-1. **Process env** (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.)
-2. **OS keychain** (the entry `omp:<provider>`)
-3. **OAuth** (refreshed token from `omp-rpc/oauth.json`)
-4. **Interactive prompt** (fallback if none of the above)
+1. **进程环境变量**（`ANTHROPIC_API_KEY`、`OPENAI_API_KEY` 等）
+2. **操作系统 keychain**（条目 `omp:<provider>`）
+3. **OAuth**（从 `omp-rpc/oauth.json` 刷新得到的 token）
+4. **交互式提示**（上述都没有时的回退）
 
-The user can override per-provider in settings:
+用户可以在 settings 中按提供方覆盖：
 
 ```json
 {
@@ -224,25 +224,25 @@ The user can override per-provider in settings:
 }
 ```
 
-`${ENV_VAR}` placeholders are resolved at session start.
+`${ENV_VAR}` 占位符会在会话开始时被解析。
 
-## Project-specific config
+## 项目专属配置
 
-`.omp/settings.json` in a project is **read but not executed by default**. The user is prompted to trust the project on first run, then `.omp/settings.json` is applied.
+项目下的 `.omp/settings.json` **默认会被读取但不会被执行**。用户会在首次运行时收到提示信任该项目，确认后 `.omp/settings.json` 才会被应用。
 
-This protects against a malicious project from auto-applying settings (e.g. redirecting API calls to an attacker).
+这能防止恶意项目自动应用配置（比如把 API 调用重定向到攻击者）。
 
-## Keychain storage
+## Keychain 存储
 
-API keys are stored in the OS keychain:
+API key 存储在操作系统的 keychain 中：
 
 - **macOS** — Keychain
-- **Linux** — `libsecret` (GNOME Keyring, KWallet, ...)
+- **Linux** — `libsecret`（GNOME Keyring、KWallet ……）
 - **Windows** — Credential Manager
 
-The wrapper is `@napi-rs/keyring` (in `packages/ai/src/auth-storage.ts`). Keys are namespaced to `omp` (or `omp-<projectId>` for project-specific keys).
+封装层是 `@napi-rs/keyring`（位于 `packages/ai/src/auth-storage.ts`）。Key 按 `omp`（或 `omp-<projectId>` 用于项目专属 key）进行命名空间隔离。
 
-To list/remove keys:
+列出 / 移除 key：
 
 ```bash
 # macOS
@@ -254,17 +254,17 @@ secret-tool search service omp
 secret-tool clear service omp
 ```
 
-## The snapshot system
+## 快照系统
 
-`pi-iso` snapshots are stored at:
+`pi-iso` 快照存储于：
 
 ```
 .omp/snapshots/<projectId>/<sessionId>/
 ```
 
-Each snapshot is a `pi-iso` filesystem clone (BTRFS reflink, APFS clone, or overlayfs mount). The snapshots are **O(1) to create** (metadata only) and **O(diff size) to restore**.
+每个快照都是一份 `pi-iso` 文件系统克隆（BTRFS reflink、APFS clone，或 overlayfs 挂载）。快照的 **创建是 O(1)**（只写元数据），**恢复是 O(差异大小)**。
 
-## The session store
+## 会话存储
 
 ```
 .omp/sessions/<projectId>/<sessionId>/
@@ -274,9 +274,9 @@ Each snapshot is a `pi-iso` filesystem clone (BTRFS reflink, APFS clone, or over
 └── debug/
 ```
 
-Same as pi-mono, with the addition of `checkpoints/` (filesystem snapshots).
+与 pi-mono 相同，新增 `checkpoints/`（文件系统快照）。
 
-## The memory store
+## 记忆存储
 
 ```
 .omp/memory/
@@ -285,9 +285,9 @@ Same as pi-mono, with the addition of `checkpoints/` (filesystem snapshots).
 └── sessions/<sessionId>/
 ```
 
-Same as pi-mono's `~/.pi/memory/`, with the addition of `sessions/` (per-session memory) and the `index.json` files (embedding index for semantic search).
+与 pi-mono 的 `~/.pi/memory/` 相同，新增 `sessions/`（每个会话的记忆）以及 `index.json` 文件（用于语义搜索的 embedding 索引）。
 
-## The telemetry config
+## 遥测配置
 
 ```json
 {
@@ -299,11 +299,11 @@ Same as pi-mono's `~/.pi/memory/`, with the addition of `sessions/` (per-session
 }
 ```
 
-By default, telemetry is **disabled**. To enable, set `enabled: true` and point to your collector. See [omp-stats](/docs/15-omp-stats) for the OTel setup.
+遥测默认 **关闭**。要启用，请把 `enabled` 设为 `true` 并指向你的 collector。OTel 配置参见 [omp-stats](/docs/15-omp-stats)。
 
-## The containerization patterns
+## 容器化模式
 
-Three patterns for running `omp` in a sandbox:
+在沙盒中运行 `omp` 有 3 种模式：
 
 ### OpenShell
 
@@ -311,19 +311,19 @@ Three patterns for running `omp` in a sandbox:
 openshell run --policy=policy.yaml -- omp
 ```
 
-Policy controls filesystem, network, process, credential access.
+Policy 控制文件系统、网络、进程、凭据的访问。
 
 ### Gondolin
 
-See [`swarm-extension`](/docs/16-swarm-extension) or use the official `gondolin` extension:
+参见 [`swarm-extension`](/docs/16-swarm-extension) 或使用官方 `gondolin` 扩展：
 
 ```bash
 omp --ext gondolin
 ```
 
-Routes `bash` and `!` commands into a Linux micro-VM.
+把 `bash` 和 `!` 命令路由到一个 Linux micro-VM。
 
-### Plain Docker
+### 普通 Docker
 
 ```bash
 docker run -it --rm \
@@ -332,50 +332,50 @@ docker run -it --rm \
   ghcr.io/can1357/omp:latest
 ```
 
-Standard container isolation.
+标准容器隔离。
 
-## Cross-platform notes
+## 跨平台注意事项
 
 ### Windows
 
-- Use **PowerShell 7+** (not `cmd.exe`)
-- The binary is named `omp.exe`
-- Long paths (>260 chars) need `LongPathsEnabled` in the registry
-- The TUI works in Windows Terminal; ConPTY is used for proper TTY emulation
+- 使用 **PowerShell 7+**（不要使用 `cmd.exe`）
+- 二进制名为 `omp.exe`
+- 长路径（>260 字符）需要在注册表中开启 `LongPathsEnabled`
+- TUI 可以在 Windows Terminal 中运行；使用 ConPTY 进行正确的 TTY 仿真
 
 ### macOS
 
-- Apple Silicon (M1+) and Intel are both supported
-- Homebrew is the recommended install path
-- The TUI uses native Cocoa (via the Rust key parser)
+- 同时支持 Apple Silicon（M1+）和 Intel
+- 推荐使用 Homebrew 安装
+- TUI 使用原生 Cocoa（通过 Rust 键解析器）
 
 ### Linux
 
-- glibc 2.31+ (Ubuntu 20.04, Debian 11, RHEL 8+)
-- For BTRFS snapshots, the filesystem must be BTRFS (or overlayfs in containers)
-- The TUI works in all major terminals (gnome-terminal, konsole, alacritty, kitty, wezterm)
+- glibc 2.31+（Ubuntu 20.04、Debian 11、RHEL 8+）
+- 使用 BTRFS 快照时，文件系统必须是 BTRFS（容器中可用 overlayfs）
+- TUI 能在所有主流终端中工作（gnome-terminal、konsole、alacritty、kitty、wezterm）
 
-## Verifying the install
+## 校验安装
 
 ```bash
 omp --version
 omp --help
-omp doctor         # (planned) — runs diagnostics
+omp doctor         # （规划中）运行诊断
 ```
 
-`omp doctor` checks:
+`omp doctor` 会检查：
 
-- Binary version vs latest
-- API key resolution
-- Network reachability to the provider's base URL
-- Disk space for session JSONL + snapshots
-- Telemetry endpoint (if enabled)
-- LSP servers available (per detected language)
+- 二进制版本是否为最新
+- API key 解析
+- 到提供方 base URL 的网络可达性
+- 用于存放会话 JSONL + 快照的磁盘空间
+- 遥测端点（如已启用）
+- 可用的 LSP 服务器（按检测到的语言）
 
-## Uninstalling
+## 卸载
 
 ```bash
-# Install script
+# 安装脚本
 rm /usr/local/bin/omp              # macOS / Linux
 rmdir "%LOCALAPPDATA%\Programs\omp"   # Windows
 
@@ -385,14 +385,14 @@ brew uninstall omp
 # Bun
 bun uninstall -g @oh-my-pi/pi-coding-agent
 
-# Cleanup
-rm -rf ~/.omp                      # settings, sessions, memory
-rm -rf .omp                        # project-local
+# 清理
+rm -rf ~/.omp                      # 设置、会话、记忆
+rm -rf .omp                        # 项目本地
 ```
 
-The uninstall leaves **no traces** — the keychain entries, settings, sessions, memory, and snapshots are all under `~/.omp/`.
+卸载 **不留下任何痕迹** —— keychain 条目、设置、会话、记忆以及快照全部位于 `~/.omp/` 下。
 
-## CI usage
+## CI 中使用
 
 ```yaml
 # GitHub Actions
@@ -404,19 +404,19 @@ The uninstall leaves **no traces** — the keychain entries, settings, sessions,
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-The `setup-action` installs `omp` to the runner. `--print` is the one-shot mode.
+`setup-action` 会把 `omp` 安装到 runner。`--print` 是一次性模式。
 
-## The install script source
+## 安装脚本源码
 
-The install script is in `install/install.sh` and `install/install.ps1` in the repo. They:
+安装脚本位于仓库中的 `install/install.sh` 和 `install/install.ps1`。它们：
 
-- Are < 200 lines each (auditable)
-- Use `set -euo pipefail` / `$ErrorActionPreference = "Stop"`
-- Verify SHA-256 + cosign signature
-- Don't pipe to `sh` from the network (download to a temp file first, then execute)
+- 均 < 200 行（可审计）
+- 使用 `set -euo pipefail` / `$ErrorActionPreference = "Stop"`
+- 校验 SHA-256 + cosign 签名
+- 不直接从网络 pipe 到 `sh`（先下载到临时文件，再执行）
 
-## Next
+## 下一篇
 
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — what gets installed
-- [Build & Release](#build--release) — how the binary is produced
-- [Security](#security--supply-chain) — supply-chain hardening
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — 安装的具体内容
+- [Build & Release](#build--release) — 二进制是如何产出的
+- [Security](#security--supply-chain) — 供应链加固

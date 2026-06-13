@@ -1,31 +1,31 @@
-# 12 · pi-wire 跨进程通信协议
+# 12 · pi-wire — Wire Protocol
 
-`@oh-my-pi/pi-wire` 是 oh-my-pi 的 **跨进程通信线协议**。基于 **protobuf** 构建以支持 schema 演进，用于在以下场景之间通信：
+`@oh-my-pi/pi-wire` is oh-my-pi's **cross-process wire protocol**. Built on **protobuf** for schema evolution, used to communicate between:
 
-- `omp` CLI 与 `collab-web` 浏览器客户端
-- `omp` CLI 与 `omp-rpc` Python 服务器
-- 两个 `omp` CLI 实例（用于蜂群协作）
-- 未来：跨主机的 Agent 协作
+- The `omp` CLI and the `collab-web` browser client
+- The `omp` CLI and the `omp-rpc` Python server
+- Two `omp` CLI instances (for swarm coordination)
+- A future: cross-host agent coordination
 
-**源码：** `packages/wire/src/`（10+ 个文件：protocol.ts、codec.ts、transport.ts 等）
+**Source:** `packages/wire/src/` (10+ files: protocol.ts, codec.ts, transport.ts, etc.)
 
-## 为什么用 protobuf（而不是 JSON）
+## Why protobuf (not JSON)
 
-JSON 是 HTTP API 的默认选择。对于线协议：
+JSON is the default for HTTP APIs. For wire protocols:
 
-| 维度 | JSON | protobuf |
+| Aspect | JSON | protobuf |
 |--------|------|----------|
-| 体积 | 每个事件约 500 字节 | 每个事件约 80 字节 |
-| 解析速度 | 约 50 µs | 约 5 µs |
-| Schema | 可选 | 必需，版本化 |
-| 类型安全 | TS 层，无运行时校验 | TS 层 + 运行时 |
-| 向后兼容 | 手动 | 自动（通过字段编号） |
+| Size | ~500 bytes per event | ~80 bytes per event |
+| Parse speed | ~50 µs | ~5 µs |
+| Schema | Optional | Required, versioned |
+| Type safety | TS, not runtime | TS + runtime |
+| Backward compat | Manual | Auto (field numbers) |
 
-对于高频事件流（Agent 每轮会发出 100+ 个事件），protobuf **体积小 6 倍**、**解析速度快 10 倍**。
+For high-frequency event streams (the agent emits 100+ events per turn), protobuf is **6× smaller** and **10× faster** to parse.
 
-## Schema
+## The schema
 
-`packages/wire/proto/studio.proto`：
+`packages/wire/proto/studio.proto`:
 
 ```protobuf
 syntax = "proto3";
@@ -73,13 +73,13 @@ message AgentEvent {
 message ToolCall {
   string id = 1;
   string name = 2;
-  bytes args = 3;     // JSON 编码的参数
+  bytes args = 3;     // JSON-encoded args
   uint32 timeout_ms = 4;
 }
 
 message ToolResult {
   string tool_call_id = 1;
-  bytes content = 2;  // JSON 编码的内容
+  bytes content = 2;  // JSON-encoded content
   bool is_error = 3;
   bytes details = 4;
 }
@@ -114,11 +114,11 @@ message Error {
 }
 ```
 
-Schema 通过 `Envelope` 上的 `version: 1` 进行 **版本化**。字段编号是稳定的 —— 新增字段向后兼容，删除字段需要升级版本号。
+The schema is **versioned** via `version: 1` on `Envelope`. Field numbers are stable — adding fields is backward compatible, removing requires bumping the version.
 
-## 传输层
+## The transports
 
-`@oh-my-pi/pi-wire` 自带 3 种传输层：
+`@oh-my-pi/pi-wire` ships 3 transports:
 
 ```ts
 // packages/wire/src/transport/index.ts
@@ -130,26 +130,26 @@ export interface Transport {
 
 // packages/wire/src/transport/stdio.ts
 export class StdioTransport implements Transport {
-  // 从 stdin 读取（JSON 行，每行一个 envelope）
-  // 写入 stdout
+  // Reads from stdin (JSON lines, one envelope per line)
+  // Writes to stdout
 }
 
 // packages/wire/src/transport/websocket.ts
 export class WebSocketTransport implements Transport {
-  // 双向 WebSocket
-  // 用于 collab-web
+  // Bi-directional WebSocket
+  // Used by collab-web
 }
 
 // packages/wire/src/transport/grpc.ts
 export class GrpcTransport implements Transport {
-  // 基于 HTTP/2 的 gRPC
-  // 用于 omp-rpc（Python）
+  // gRPC over HTTP/2
+  // Used by omp-rpc (Python)
 }
 ```
 
-3 种传输共享同一个 `Envelope` schema，因此同一份代码可以在任意一种传输上运行。
+The 3 transports share the same `Envelope` schema, so the same code can run over any of them.
 
-## 编解码器
+## The codec
 
 ```ts
 // packages/wire/src/codec.ts
@@ -157,7 +157,7 @@ export function encode(envelope: Envelope): Uint8Array;
 export function decode(bytes: Uint8Array): Envelope;
 ```
 
-使用 `protobuf-es`（TypeScript 运行时）：
+Uses `protobuf-es` (the TypeScript runtime):
 
 ```ts
 import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
@@ -172,41 +172,41 @@ export function decode(bytes: Uint8Array): Envelope {
 }
 ```
 
-`protobuf-es` 比老旧的 `protobufjs` 库 **快 5-10 倍**，并能产出更干净的 TypeScript 类型。
+`protobuf-es` is **5-10× faster** than the older `protobufjs` library and produces cleaner TypeScript types.
 
-## `Studio` 类
+## The `Studio` class
 
 ```ts
 // packages/wire/src/studio.ts
 export class Studio {
   constructor(opts: StudioOptions);
-
-  // 发送给对端
+  
+  // Send to peer
   async sendSessionStart(opts: SessionStart): Promise<void>;
   async sendUserMessage(message: UserMessage): Promise<void>;
   async sendToolCall(call: ToolCall): Promise<void>;
   async sendToolResult(result: ToolResult): Promise<void>;
   async sendSnapshot(op: SnapshotOp): Promise<void>;
-
-  // 从对端接收
+  
+  // Receive from peer
   onSessionStart(handler: (msg: SessionStart) => void): void;
   onUserMessage(handler: (msg: UserMessage) => void): void;
   onToolCall(handler: (call: ToolCall) => Promise<ToolResult>): void;
   onSnapshot(handler: (op: SnapshotOp) => Promise<SnapshotResult>): void;
-
-  // 心跳
+  
+  // Heartbeat
   startHeartbeat(intervalMs: number): void;
-
-  // 生命周期
+  
+  // Lifecycle
   close(): Promise<void>;
 }
 ```
 
-`Studio` 是 **高层 API** —— 使用方不需要直接处理原始 envelope。
+The `Studio` is the **high-level API** — consumers don't deal with raw envelopes.
 
-## 与 collab-web 的集成
+## The collab-web integration
 
-`collab-web`（React 19 Web 客户端）通过 WebSocket 连接到 `omp`：
+`collab-web` (the React 19 web client) connects to `omp` via WebSocket:
 
 ```mermaid
 sequenceDiagram
@@ -216,23 +216,23 @@ sequenceDiagram
 
     Browser->>WS: connect
     WS->>CLI: WebSocket upgrade
-    CLI->>CLI: 创建 Studio 客户端
+    CLI->>CLI: create Studio client
     CLI->>Browser: Heartbeat
     Browser->>WS: Heartbeat
     CLI->>Browser: SessionStart { sessionId, model, tools }
-    loop 对每个 Agent 事件
+    loop for each agent event
         CLI->>Browser: AgentEvent { ... }
     end
     Browser->>CLI: UserMessage { text: "..." }
     CLI->>Browser: AgentEvent { text_delta: "..." }
-    Browser->>CLI: Heartbeat（每 5s 一次）
+    Browser->>CLI: Heartbeat (every 5s)
 ```
 
-传输层是 `WebSocketTransport`。Schema 仍然是同一个 `Envelope`。浏览器端的代码由 `.proto` 文件自动生成。
+The transport is `WebSocketTransport`. The schema is the same `Envelope`. The browser code is auto-generated from the `.proto` file.
 
-## 与 omp-rpc（Python）的集成
+## The omp-rpc (Python) integration
 
-`python/omp-rpc/` 是一个讲线协议的 Python 服务器：
+`python/omp-rpc/` is a Python server that speaks the wire protocol:
 
 ```python
 # python/omp-rpc/omp_rpc/server.py
@@ -244,9 +244,9 @@ class OmpRpcServer:
         self.transport = GrpcTransport(omp_studio_url)
         self.studio = StudioClient(self.transport)
         self.studio.on_tool_call(self.handle_tool_call)
-
+    
     async def handle_tool_call(self, call: ToolCall) -> ToolResult:
-        # Python 端的工具实现
+        # Python-side tool implementations
         if call.name == "python_exec":
             result = await self.python_exec(json.loads(call.args))
             return ToolResult(
@@ -254,20 +254,20 @@ class OmpRpcServer:
                 content=json.dumps(result).encode(),
                 is_error=False
             )
-        # ... 更多工具
+        # ... more tools
 ```
 
-使用场景：
+Use cases:
 
-- 从 `omp` 调用 Python ML 库（pandas、scikit-learn 等）
-- 运行需要 Python 生态的 Python-only 工具
-- 桥接到基于 Python 的 Agent 框架（如 LangChain、LlamaIndex）
+- Call Python ML libraries (pandas, scikit-learn, etc.) from `omp`
+- Run Python-only tools that need the Python ecosystem
+- Bridge to Python-based agent frameworks (e.g. LangChain, LlamaIndex)
 
-服务器通过 `omp-rpc start` 启动，`omp` 通过 `--rpc-url` 标志连接它。
+The server is started with `omp-rpc start` and `omp` connects to it via the `--rpc-url` flag.
 
-## 与 `robomp` 的集成
+## The `robomp` integration
 
-`robomp` 是一个 **生产环境的 Agent 即服务**：
+`robomp` is a **production agent-as-a-service**:
 
 ```mermaid
 flowchart TB
@@ -280,18 +280,18 @@ flowchart TB
   Robomp --> HTTP[HTTP response]
 ```
 
-`robomp` 是一个长生命周期的 Python 服务，它：
+`robomp` is a long-running Python service that:
 
-1. 接收 HTTP 请求（例如"修这个 bug"）
-2. 启动一个新的 `omp` 会话（通过 `pi-wire` + stdio）
-3. 将事件流式回传给 HTTP 客户端
-4. 返回最终结果
+1. Accepts HTTP requests (e.g. "fix this bug")
+2. Starts a new `omp` session (via `pi-wire` + stdio)
+3. Streams events back to the HTTP client
+4. Returns the final result
 
-`robomp` 的 Dockerfile 在仓库根目录：`Dockerfile.robomp`。
+The `robomp` Dockerfile is in the repo root: `Dockerfile.robomp`.
 
-## 蜂群协作
+## The swarm coordination
 
-`swarm-extension` 使用 `pi-wire` 协调子 Agent：
+`swarm-extension` uses `pi-wire` to coordinate sub-agents:
 
 ```mermaid
 flowchart LR
@@ -306,11 +306,11 @@ flowchart LR
   Sub3 -->|result| Parent
 ```
 
-每个子 Agent 都是一个 **独立的** `omp` 进程（如果设置了 `--in-process` 则在进程内）。父 Agent 通过 `pi-wire` 经由 stdio（或本地 socket）与之通信。参见 [swarm-extension](/docs/16-swarm-extension)。
+Each sub-agent is a **separate** `omp` process (or in-process if `--in-process` is set). The parent communicates via `pi-wire` over stdio (or local socket). See [swarm-extension](/docs/16-swarm-extension).
 
-## 代码生成
+## The code generation
 
-`pi-wire` 的 TypeScript 代码通过 `bufbuild/protoc-gen-es` 由 `.proto` 文件生成：
+`pi-wire`'s TypeScript code is generated from the `.proto` file via `bufbuild/protoc-gen-es`:
 
 ```bash
 # packages/wire/proto/gen.sh
@@ -319,7 +319,7 @@ buf generate \
   --out packages/wire/src/gen
 ```
 
-`buf.gen.yaml`：
+`buf.gen.yaml`:
 
 ```yaml
 version: v1
@@ -329,78 +329,78 @@ plugins:
     opt: target=ts
 ```
 
-生成的文件会被提交进仓库（不在构建时生成）。这与 `pi-ai` 的 `models.generated.ts` 模式一致。
+The generated files are committed (not generated at build time). Same pattern as `pi-ai`'s `models.generated.ts`.
 
-## Schema 版本管理
+## The schema versioning
 
-当 Schema 变化时：
+When the schema changes:
 
-1. **新增字段** — 向后兼容，无需升级版本号
-2. **删除字段** — 将 `Envelope.version` 升到 2
-3. **重命名字段** — 将 `Envelope.version` 升到 2（视作新增 + 删除）
-4. **修改字段类型** — 将 `Envelope.version` 升到 2
+1. **Add a field** — backward compatible, no version bump
+2. **Remove a field** — bump `Envelope.version` to 2
+3. **Rename a field** — bump `Envelope.version` to 2 (treat as add + remove)
+4. **Change field type** — bump `Envelope.version` to 2
 
-接收方读取 `Envelope.version` 并分派给对应的解析器。旧 envelope 由旧代码解析，新 envelope 由新代码解析。
+The receiver reads `Envelope.version` and dispatches to the right parser. Old envelopes are parsed by the old code; new envelopes by the new code.
 
-## 心跳
+## The heartbeat
 
-长连接需要心跳来检测对端是否失联：
+Long-lived connections need a heartbeat to detect dead peers:
 
 ```ts
-// 在 CLI（服务端）
+// In the CLI (server)
 setInterval(() => {
   studio.sendHeartbeat({ timestamp: Date.now(), clientId: "omp-cli-123" });
 }, 5000);
 
-// 在浏览器（客户端）
+// In the browser (client)
 setInterval(() => {
   studio.sendHeartbeat({ timestamp: Date.now(), clientId: "browser-456" });
 }, 5000);
 
-// 在 Studio 中
+// In Studio
 studio.on("missed_heartbeats", (count) => {
   if (count > 3) {
-    // 对端已死，关闭连接
+    // Peer is dead, close the connection
     studio.close();
   }
 });
 ```
 
-3 次心跳丢失（15 秒）= 判定对端已死。连接被关闭，会话被打 checkpoint。
+3 missed heartbeats (15s) = peer assumed dead. The connection is closed and the session is checkpointed.
 
-## 帧格式
+## The framing
 
-对于 WebSocket，每个 envelope 用一个 4 字节长度前缀来定界：
+For WebSocket, each envelope is framed with a 4-byte length prefix:
 
 ```
 [length:4][envelope:N]
 ```
 
-对于 stdio，每个 envelope 占一行 JSON（`version` 字段在最前）：
+For stdio, each envelope is one JSON line (with `version` first):
 
 ```json
 {"version":1,"payload":{"sessionStart":{...}}}
 ```
 
-对于 gRPC，envelope 作为独立的消息发送（长度由 gRPC 协议自身处理）。
+For gRPC, envelopes are sent as individual messages (length is part of the gRPC protocol).
 
-## 编解码性能
+## The codec performance
 
-在 MacBook Pro M2 Max 上测得，编码一个典型的 `AgentEvent`：
+Measured on a MacBook Pro M2 Max, encoding a typical `AgentEvent`:
 
-| 格式 | 体积 | 编码 | 解码 |
+| Format | Size | Encode | Decode |
 |--------|------|--------|--------|
-| JSON | 487 字节 | 22 µs | 18 µs |
-| protobuf | 78 字节 | 4 µs | 3 µs |
+| JSON | 487 bytes | 22 µs | 18 µs |
+| protobuf | 78 bytes | 4 µs | 3 µs |
 
-体积小 6 倍，速度快 5 倍。每轮 100 个事件，每轮可节省约 30KB 带宽和约 5ms CPU。
+6× smaller, 5× faster. For 100 events per turn, this saves ~30KB of bandwidth and ~5ms of CPU per turn.
 
-## TypeScript 类型
+## The TypeScript types
 
-`@bufbuild/protobuf` 生成干净的 TypeScript 类型：
+`@bufbuild/protobuf` generates clean TypeScript types:
 
 ```ts
-// 由 .proto 自动生成
+// Auto-generated from .proto
 import type { Envelope, AgentEvent, ToolCall } from "./gen/studio_pb.js";
 
 const env: Envelope = {
@@ -416,9 +416,9 @@ const env: Envelope = {
 };
 ```
 
-proto 中的 `oneof` 在 TS 里映射为 `{ case: "...", value: ... }` 形式的判别联合。类型安全，无运行时解析。
+The discriminated union (`oneof` in proto) maps to `{ case: "...", value: ... }` in TS. Type-safe, no runtime parsing.
 
-## 配置
+## Configuration
 
 ```json
 {
@@ -432,18 +432,18 @@ proto 中的 `oneof` 在 TS 里映射为 `{ case: "...", value: ... }` 形式的
 }
 ```
 
-`compression` 字段已在规划中但尚未实现（gzip 可以在 protobuf 之上再节省约 30%）。
+The `compression` field is planned but not yet implemented (gzip would save another ~30% on top of protobuf).
 
-## pi-wire 中不包含的内容
+## What's NOT in pi-wire
 
-- **认证** — 线协议本身不提供认证；由传输层（TLS、mTLS）负责
-- **加密** — envelope 是明文 protobuf；请在传输层使用 TLS
-- **Schema 注册中心** — `.proto` 文件即唯一真相来源，没有外部注册中心
-- **多路复用** — 每个连接承载一个 envelope 流；多个会话需要多个连接
+- **Authentication** — the wire protocol is unauthenticated; the transport layer (TLS, mTLS) handles it
+- **Encryption** — the envelopes are plain protobuf; use TLS at the transport layer
+- **Schema registry** — the `.proto` file is the source of truth; no external registry
+- **Multiplexing** — one envelope stream per connection; multiple sessions need multiple connections
 
-## 下一篇
+## Next
 
-- [collab-web](/docs/14-collab-web) — React 19 客户端
-- [swarm-extension](/docs/16-swarm-extension) — 使用 pi-wire 协调子 Agent
-- [omp-stats](/docs/15-omp-stats) — 遥测
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — 使用方
+- [collab-web](/docs/14-collab-web) — the React 19 client
+- [swarm-extension](/docs/16-swarm-extension) — uses pi-wire for sub-agent coordination
+- [omp-stats](/docs/15-omp-stats) — telemetry
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — the consumer

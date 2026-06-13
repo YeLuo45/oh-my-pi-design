@@ -1,14 +1,14 @@
-# 07 · DAP — Debug Adapter Protocol · 28 Operations
+# 07 · DAP 调试适配器协议 28 个操作
 
-oh-my-pi ships **first-class Debug Adapter Protocol (DAP) integration**. 28 operations exposed as 28 tools, letting the agent **debug code** — set breakpoints, step through execution, inspect variables, evaluate expressions, and more. The same protocol your editor uses to debug, now available to the agent.
+oh-my-pi 发布**一级 DAP（Debug Adapter Protocol）集成**。28 个操作作为 28 个工具暴露，让 Agent 能够**调试代码** —— 设置断点、单步执行、查看变量、求值表达式等等。和你的编辑器使用的同一套调试协议，现在 Agent 也能用。
 
-**Source:** `packages/coding-agent/src/core/tools/dap/` (28 tools, 1 DAP client, 1 adapter registry)
+**源码：** `packages/coding-agent/src/core/tools/dap/`（28 个工具，1 个 DAP 客户端，1 个 adapter 注册表）
 
-## What is DAP
+## 什么是 DAP
 
-The **Debug Adapter Protocol** is the standard that lets editors (VS Code, Neovim, Emacs) talk to debug-specific backends ("debug adapters") for a language or runtime. A debug adapter for Node.js knows how to set breakpoints in V8; one for Python knows how to set breakpoints in CPython.
+**Debug Adapter Protocol** 是让编辑器（VS Code、Neovim、Emacs）与调试专用后端（"debug adapters"）通信的标准。一个 Node.js 的 debug adapter 知道如何在 V8 中设置断点；一个 Python 的 debug adapter 知道如何在 CPython 中设置断点。
 
-By using DAP, oh-my-pi gets **real debugging** — not print statements, not logging, but actual interactive debugging with state inspection, step control, and breakpoint management.
+通过使用 DAP，oh-my-pi 获得了**真正的调试能力** —— 不是 print，不是 log，而是真实的交互式调试，可以查看状态、控制单步、管理断点。
 
 ```mermaid
 sequenceDiagram
@@ -33,69 +33,69 @@ sequenceDiagram
     Adapter-->>Client: breakpoints verified
 ```
 
-## The 28 operations
+## 28 个操作
 
-| # | Op | DAP method | What it does |
+| # | Op | DAP method | 作用 |
 |---|-----|------------|--------------|
-| 1 | `dap_launch` | `launch` | Start a new debug session |
-| 2 | `dap_attach` | `attach` | Attach to a running process |
-| 3 | `dap_configurationDone` | `configurationDone` | All initial config sent |
-| 4 | `dap_setBreakpoints` | `setBreakpoints` | Set breakpoints in a source |
-| 5 | `dap_setExceptionBreakpoints` | `setExceptionBreakpoints` | Break on exceptions |
-| 6 | `dap_continue` | `continue` | Resume execution |
-| 7 | `dap_next` | `next` | Step over |
-| 8 | `dap_stepIn` | `stepIn` | Step into |
-| 9 | `dap_stepOut` | `stepOut` | Step out |
-| 10 | `dap_pause` | `pause` | Pause a running thread |
-| 11 | `dap_threads` | `threads` | List threads |
-| 12 | `dap_stackTrace` | `stackTrace` | Get call stack for a thread |
-| 13 | `dap_scopes` | `scopes` | Get scopes for a frame |
-| 14 | `dap_variables` | `variables` | Get variables in a scope |
-| 15 | `dap_setVariable` | `setVariable` | Set a variable's value |
-| 16 | `dap_evaluate` | `evaluate` | Evaluate an expression |
-| 17 | `dap_watch` | `watch` | Set a watch expression |
-| 18 | `dap_source` | `source` | Get source for a frame |
-| 19 | `dap_exceptionInfo` | `exceptionInfo` | Get exception details |
-| 20 | `dap_loadedSources` | `loadedSources` | List loaded sources |
-| 21 | `dap_completions` | `completions` | REPL completions |
-| 22 | `dap_runInTerminal` | `runInTerminal` | Run a command in the integrated terminal |
-| 23 | `dap_startDebugging` | `startDebugging` | Start a child debug session |
-| 24 | `dap_disconnect` | `disconnect` | End a debug session |
-| 25 | `dap_terminate` | `terminate` | Kill the debuggee |
-| 26 | `dap_restart` | `restart` | Restart the debug session |
-| 27 | `dap_goto` | `goto` | Jump to a different location |
-| 28 | `dap_reverseContinue` | `reverseContinue` | Resume in reverse (time travel) |
+| 1 | `dap_launch` | `launch` | 启动一个新的调试会话 |
+| 2 | `dap_attach` | `attach` | 附加到一个已运行的进程 |
+| 3 | `dap_configurationDone` | `configurationDone` | 所有初始配置已发送 |
+| 4 | `dap_setBreakpoints` | `setBreakpoints` | 在源码中设置断点 |
+| 5 | `dap_setExceptionBreakpoints` | `setExceptionBreakpoints` | 在异常时中断 |
+| 6 | `dap_continue` | `continue` | 恢复执行 |
+| 7 | `dap_next` | `next` | 单步跳过 |
+| 8 | `dap_stepIn` | `stepIn` | 单步进入 |
+| 9 | `dap_stepOut` | `stepOut` | 单步跳出 |
+| 10 | `dap_pause` | `pause` | 暂停运行中的线程 |
+| 11 | `dap_threads` | `threads` | 列出线程 |
+| 12 | `dap_stackTrace` | `stackTrace` | 获取某线程的调用栈 |
+| 13 | `dap_scopes` | `scopes` | 获取栈帧的作用域 |
+| 14 | `dap_variables` | `variables` | 获取作用域中的变量 |
+| 15 | `dap_setVariable` | `setVariable` | 设置变量的值 |
+| 16 | `dap_evaluate` | `evaluate` | 求值一个表达式 |
+| 17 | `dap_watch` | `watch` | 设置 watch 表达式 |
+| 18 | `dap_source` | `source` | 获取栈帧对应的源码 |
+| 19 | `dap_exceptionInfo` | `exceptionInfo` | 获取异常详情 |
+| 20 | `dap_loadedSources` | `loadedSources` | 列出已加载的源码 |
+| 21 | `dap_completions` | `completions` | REPL 自动补全 |
+| 22 | `dap_runInTerminal` | `runInTerminal` | 在集成终端中运行命令 |
+| 23 | `dap_startDebugging` | `startDebugging` | 启动子调试会话 |
+| 24 | `dap_disconnect` | `disconnect` | 结束调试会话 |
+| 25 | `dap_terminate` | `terminate` | 杀掉被调试进程 |
+| 26 | `dap_restart` | `restart` | 重启调试会话 |
+| 27 | `dap_goto` | `goto` | 跳转到其他位置 |
+| 28 | `dap_reverseContinue` | `reverseContinue` | 反向恢复执行（时间旅行） |
 
-Some operations are **passive** (e.g. `dap_threads` queries state) and some are **active** (e.g. `dap_continue` changes state).
+部分操作是**被动**的（例如 `dap_threads` 查询状态），部分是**主动**的（例如 `dap_continue` 改变状态）。
 
-## The DAP client
+## DAP 客户端
 
-`packages/coding-agent/src/core/tools/dap/client.ts` is the **DAP client**:
+`packages/coding-agent/src/core/tools/dap/client.ts` 是 **DAP 客户端**：
 
 ```ts
 export class DapClient {
-  // Lifecycle
+  // 生命周期
   static async launch(opts: LaunchOptions): Promise<DapClient>;
   static async attach(opts: AttachOptions): Promise<DapClient>;
   async disconnect(terminateDebuggee?: boolean): Promise<void>;
-  
-  // State queries
+
+  // 状态查询
   async threads(): Promise<Thread[]>;
   async stackTrace(threadId: number): Promise<StackFrame[]>;
   async scopes(frameId: number): Promise<Scope[]>;
   async variables(variablesReference: number): Promise<Variable[]>;
   async evaluate(expression: string, frameId?: number): Promise<EvaluateResult>;
   async source(sourceReference: number): Promise<Source>;
-  
-  // State changes
+
+  // 状态变更
   async setBreakpoints(file: string, lines: number[]): Promise<Breakpoint[]>;
   async continue(threadId: number): Promise<void>;
   async next(threadId: number): Promise<void>;
   async stepIn(threadId: number): Promise<void>;
   async stepOut(threadId: number): Promise<void>;
   async pause(threadId: number): Promise<void>;
-  
-  // Events (async)
+
+  // 事件（异步）
   on(event: "stopped", cb: (event: StoppedEvent) => void): void;
   on(event: "continued", cb: (event: ContinuedEvent) => void): void;
   on(event: "output", cb: (event: OutputEvent) => void): void;
@@ -103,18 +103,18 @@ export class DapClient {
 }
 ```
 
-The client is **stateful** — it maintains the current debug state (threads, frames, scopes, variables) and exposes it through methods and events.
+客户端是**有状态的** —— 它维护当前的调试状态（threads、frames、scopes、variables），并通过方法和事件暴露给外部。
 
-## The adapter registry
+## adapter 注册表
 
-`packages/coding-agent/src/core/tools/dap/adapters.ts`:
+`packages/coding-agent/src/core/tools/dap/adapters.ts`：
 
 ```ts
 export const DAP_ADAPTERS: Record<string, DapAdapterSpec> = {
   node: {
     type: "executable",
     command: "node",
-    args: ["--inspect-brk=0", "${program}"],  // ${program} substituted at launch
+    args: ["--inspect-brk=0", "${program}"],  // ${program} 在 launch 时替换
     installHint: "Node.js ≥ 18 with --inspect-brk support",
     supportsAttach: true,
     supportsLaunch: true
@@ -135,32 +135,32 @@ export const DAP_ADAPTERS: Record<string, DapAdapterSpec> = {
     supportsAttach: true,
     supportsLaunch: true
   },
-  // ... 15+ more
+  // ... 15+ 还可以
 };
 ```
 
-Bundled adapters:
+内置 adapter：
 
-| Language | Adapter | Install |
+| 语言 | Adapter | 安装方式 |
 |----------|---------|---------|
-| Node.js | `node --inspect` | bundled |
+| Node.js | `node --inspect` | 内建 |
 | Python | `debugpy` | `pip install debugpy` |
 | Go | `dlv dap` | `go install github.com/go-delve/delve/dap@latest` |
-| Rust | `lldb-vscode` (via CodeLLDB) | `code-lldb` extension |
+| Rust | `lldb-vscode`（通过 CodeLLDB） | `code-lldb` 扩展 |
 | Java | `vscode-java-debug` | `redhat.vscode-java-debug` |
-| C/C++ | `lldb-vscode` | `code-lldb` extension |
+| C/C++ | `lldb-vscode` | `code-lldb` 扩展 |
 | PHP | `php-debug` | `composer global require` |
 | Ruby | `rdbg` | `gem install debug.gem` |
-| Dart | `dart --debug` | bundled with Dart SDK |
+| Dart | `dart --debug` | 随 Dart SDK 内建 |
 | Lua | `local-lua-debugger` | `luarocks install` |
-| Elixir | `mix debug` | bundled with Elixir 1.13+ |
+| Elixir | `mix debug` | 随 Elixir 1.13+ 内建 |
 | C# | `netcoredbg` | dotnet tool install |
-| Swift | `lldb-vscode` | `code-lldb` extension |
+| Swift | `lldb-vscode` | `code-lldb` 扩展 |
 | Kotlin | `vscode-kotlin-debug` | `kotlin-debug-adapter` |
 
-## A typical debugging session
+## 一个典型的调试会话
 
-The agent can debug a failing test end-to-end:
+Agent 可以端到端地调试一个失败的测试：
 
 ```mermaid
 sequenceDiagram
@@ -171,39 +171,39 @@ sequenceDiagram
 
     Agent->>DAP: dap_launch({ type: "node", program: "test/auth.test.js" })
     DAP-->>Agent: handle, threads=[1]
-    
+
     Agent->>DAP: dap_setBreakpoints("src/auth/login.ts", [42])
     DAP-->>Agent: breakpoints verified
-    
+
     Agent->>DAP: dap_continue(threadId=1)
     Note over DAP, Runtime: Test runs, hits breakpoint at line 42
     DAP-->>Agent: stopped event { reason: "breakpoint", threadId: 1 }
-    
+
     Agent->>DAP: dap_stackTrace(threadId=1)
     DAP-->>Agent: [main, test, authenticate, hashPassword]
-    
+
     Agent->>DAP: dap_scopes(frameId=3)
     DAP-->>Agent: [Local, Global, Closure]
-    
+
     Agent->>DAP: dap_variables(scope=local)
     DAP-->>Agent: [password, salt, iterations, expectedHash]
-    
+
     Agent->>DAP: dap_evaluate("bcrypt.compareSync(password, expectedHash)", frameId=3)
     DAP-->>Agent: { result: "false" }
-    
+
     Note over Agent: Now I know the bug:<br/>password is hashed with new salt<br/>but compared to old hash
-    
+
     Agent->>DAP: dap_continue(threadId=1)
     DAP-->>Agent: continued
     Agent->>DAP: dap_terminate()
     DAP-->>Agent: terminated
 ```
 
-The agent has **the same debugging power as a human** — set breakpoints, step, inspect, evaluate, fix, repeat.
+Agent 拥有**与人类相同的调试能力** —— 设置断点、单步、查看、求值、修复、循环。
 
-## The 28 tool definitions
+## 28 个工具定义
 
-Each tool is a thin wrapper. Example:
+每个工具都是一层薄包装。示例：
 
 ```ts
 // packages/coding-agent/src/core/tools/dap/evaluate.ts
@@ -230,12 +230,12 @@ const evaluateTool: AgentTool<typeof EvaluateArgs> = {
   async execute(args, ctx) {
     const session = ctx.dap.activeSession();
     if (!session) return { content: [{ type: "text", text: "No active debug session" }], isError: true };
-    
+
     const result = await session.evaluate(args.expression, {
       frameId: args.frameId,
       context: args.context ?? "repl"
     });
-    
+
     return {
       content: [{ type: "text", text: `${result.result}  // ${result.type}` }],
       details: { variablesReference: result.variablesReference, presentationHint: result.presentationHint }
@@ -244,9 +244,9 @@ const evaluateTool: AgentTool<typeof EvaluateArgs> = {
 };
 ```
 
-## Conditional breakpoints
+## 条件断点
 
-`dap_setBreakpoints` supports conditions:
+`dap_setBreakpoints` 支持条件：
 
 ```ts
 {
@@ -258,9 +258,9 @@ const evaluateTool: AgentTool<typeof EvaluateArgs> = {
 }
 ```
 
-The `condition` is a JS-like expression evaluated in the frame's context. `hitCondition` is a count (e.g. `>5` = break after 5 hits). `logMessage` is a logpoint — doesn't break, just logs.
+`condition` 是在栈帧上下文中求值的 JS 风格表达式。`hitCondition` 是命中次数（例如 `>5` 表示命中 5 次之后才中断）。`logMessage` 是 logpoint —— 不中断，只打印日志。
 
-## Watch expressions
+## Watch 表达式
 
 ```ts
 {
@@ -271,11 +271,11 @@ The `condition` is a JS-like expression evaluated in the frame's context. `hitCo
 }
 ```
 
-The agent can set watches that are **automatically evaluated** on every stop. The results are shown in the TUI's watch panel.
+Agent 可以设置在每次中断时**自动求值**的 watch。求值结果会显示在 TUI 的 watch 面板中。
 
-## REPL completions
+## REPL 自动补全
 
-`dap_completions` provides REPL-style completions for the `evaluate` tool:
+`dap_completions` 为 `evaluate` 工具提供 REPL 风格的自动补全：
 
 ```ts
 {
@@ -284,14 +284,14 @@ The agent can set watches that are **automatically evaluated** on every stop. Th
   column: 6
 }
 
-// Returns: ["push", "pop", "map", "filter", "find", "length", "forEach", ...]
+// 返回：["push", "pop", "map", "filter", "find", "length", "forEach", ...]
 ```
 
-The agent uses this to discover available methods on a value before calling them.
+Agent 用它在调用方法前发现某个值上可用的方法。
 
-## The `runInTerminal` integration
+## `runInTerminal` 集成
 
-`dap_runInTerminal` is a special operation — it tells the agent to run a command in the **integrated terminal** (not the debug console):
+`dap_runInTerminal` 是个特殊操作 —— 它告诉 Agent 在**集成终端**（不是调试控制台）里运行命令：
 
 ```ts
 {
@@ -300,15 +300,15 @@ The agent uses this to discover available methods on a value before calling them
 }
 ```
 
-The agent uses this to install dependencies mid-debug-session without leaving the debug context.
+Agent 用它在不离开调试上下文的情况下安装依赖。
 
-## `startDebugging` — child debug sessions
+## `startDebugging` — 子调试会话
 
-`dap_startDebugging` spawns a **child debug session** from a parent. Used for:
+`dap_startDebugging` 由父会话生成**子调试会话**。用于：
 
-- Multi-process debugging (e.g. a Node server + a worker)
-- Client/server debugging (e.g. a Go server + a Go client)
-- Test debugging (a test runner spawns a debug session per test)
+- 多进程调试（例如一个 Node 服务 + 一个 worker）
+- 客户端/服务端调试（例如一个 Go server + 一个 Go client）
+- 调试测试（测试运行器为每个测试生成一个调试会话）
 
 ```ts
 {
@@ -317,11 +317,11 @@ The agent uses this to install dependencies mid-debug-session without leaving th
 }
 ```
 
-The child is a separate `DapClient` with its own thread ID space. The parent can interact with both.
+子会话是一个独立的 `DapClient`，拥有自己的线程 ID 空间。父会话可以与两者交互。
 
-## Configuration
+## 配置
 
-`~/.omp/settings.json`:
+`~/.omp/settings.json`：
 
 ```json
 {
@@ -343,55 +343,55 @@ The child is a separate `DapClient` with its own thread ID space. The parent can
 }
 ```
 
-The `launchConfigs` array is similar to `.vscode/launch.json` — the user can define reusable launch configurations.
+`launchConfigs` 数组类似于 `.vscode/launch.json` —— 用户可以定义可复用的 launch 配置。
 
-## The TUI integration
+## TUI 集成
 
-The TUI has a **dedicated debug panel** that shows:
+TUI 有一个**专门的调试面板**，会显示：
 
-- Threads (with the current one highlighted)
-- Call stack (with the current frame highlighted)
-- Variables (with the current scope expanded)
-- Watch expressions
-- Breakpoints
-- Console output
-- Source preview (the current line in the frame)
+- 线程（高亮当前线程）
+- 调用栈（高亮当前栈帧）
+- 变量（展开当前作用域）
+- Watch 表达式
+- 断点
+- 控制台输出
+- 源码预览（栈帧中的当前行）
 
-The agent can read the debug panel state via the `dap_*` tools; the user can see what the agent sees.
+Agent 可以通过 `dap_*` 工具读取调试面板的状态；用户也能看到 Agent 看到的内容。
 
-## Performance
+## 性能
 
-- **Launch** — 200-500ms (depends on adapter)
-- **setBreakpoints** — 50-200ms (needs to compile/instrument)
-- **continue / next / stepIn** — 5-50ms (network round-trip)
-- **evaluate** — 10-100ms (depends on expression complexity)
+- **Launch** — 200-500ms（取决于 adapter）
+- **setBreakpoints** — 50-200ms（需要编译/插桩）
+- **continue / next / stepIn** — 5-50ms（网络往返）
+- **evaluate** — 10-100ms（取决于表达式复杂度）
 - **stackTrace / scopes / variables** — 5-20ms
 
-The DAP client keeps the adapter alive for the session, so the per-request cost is just the protocol round-trip.
+DAP 客户端在整个会话期间保持 adapter 存活，所以单次请求的代价只是协议往返。
 
-## What DAP can't do
+## DAP 做不到的事
 
-- **Time travel debugging** — only `reverseContinue` is supported, not full time travel
-- **Memory inspection** — DAP doesn't have a standard way to inspect memory
-- **Multi-language mixed stacks** — a Python frame calling a Rust frame is hard to model
-- **Conditional watch** — the `evaluate` tool runs once per stop, not on every event
+- **时间旅行调试** — 只支持 `reverseContinue`，完整的时间旅行还做不到
+- **内存检查** — DAP 没有标准方式来检查内存
+- **多语言混合栈** — 一个 Python 栈帧调用一个 Rust 栈帧很难建模
+- **条件 watch** — `evaluate` 工具在每次中断时跑一次，不是每个事件都跑
 
-These are inherent limitations of DAP, not oh-my-pi.
+这些是 DAP 本身的限制，而非 oh-my-pi。
 
-## Integration with `hashline`
+## 与 `hashline` 的集成
 
-The agent can use DAP and `hashline` together:
+Agent 可以把 DAP 和 `hashline` 一起用：
 
-1. **Debug** to find a bug (set breakpoints, step, inspect)
-2. **Identify** the line to fix
-3. **Use `hashline_replace`** to make the edit (with safety check)
-4. **Continue** the debug session to verify the fix
+1. **调试**以发现 bug（设断点、单步、查看）
+2. **定位**到需要修复的那一行
+3. **使用 `hashline_replace`** 来做编辑（带安全校验）
+4. **继续**调试会话以验证修复
 
-This is the **core debugging workflow** for the agent.
+这就是 Agent 的**核心调试工作流**。
 
-## Next
+## 接下来
 
-- [LSP](/docs/06-lsp) — the read-side code understanding
-- [hashline](/docs/08-hashline) — the write-side edit primitive
-- [32 Built-in Tools](/docs/09-tools) — the full tool list
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — the consumer
+- [LSP](/docs/06-lsp) — 读侧的代码理解
+- [hashline](/docs/08-hashline) — 写侧的编辑原语
+- [32 个内建工具](/docs/09-tools) — 完整工具列表
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — 消费者

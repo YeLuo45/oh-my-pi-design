@@ -1,14 +1,14 @@
-# 06 · LSP — Language Server Protocol · 14 Operations
+# 06 · LSP 语言服务器协议 14 个操作
 
-oh-my-pi is the first agent to ship **first-class Language Server Protocol (LSP) integration**. 14 operations, fully type-safe, exposed as 14 tools. The agent can use the same LSP that powers your editor to understand code at a deep level — type info, references, definitions, symbols, formatting, renaming, code actions, and more.
+oh-my-pi 是首个发布**一级 LSP（Language Server Protocol）集成**的 Agent。14 个操作，全部类型安全，作为 14 个工具暴露。Agent 可以使用与你编辑器相同的 LSP 来深度理解代码 —— 类型信息、引用、定义、符号、格式化、重命名、代码动作等等。
 
-**Source:** `packages/coding-agent/src/core/tools/lsp/` (14 tools, 1 LSP client, 1 server registry)
+**源码：** `packages/coding-agent/src/core/tools/lsp/`（14 个工具，1 个 LSP 客户端，1 个服务端注册表）
 
-## What is LSP
+## 什么是 LSP
 
-The **Language Server Protocol** is the standard that lets editors (VS Code, Neovim, Emacs, Helix) talk to language-specific backends ("language servers") for IDE features. A language server for TypeScript understands types; one for Rust understands lifetimes; one for Python understands PEP 484.
+**Language Server Protocol** 是让编辑器（VS Code、Neovim、Emacs、Helix）与语言特定后端（"language servers"）通信以获得 IDE 能力的一套标准。TypeScript 的 language server 理解类型；Rust 的理解生命周期；Python 的理解 PEP 484。
 
-By using LSP, oh-my-pi gets **the same level of code understanding as your editor** — without reimplementing language-specific parsers, type systems, and formatters.
+通过使用 LSP，oh-my-pi 获得了**与你的编辑器同等水平的代码理解** —— 而无需重新实现各语言的解析器、类型系统与格式化器。
 
 ```mermaid
 sequenceDiagram
@@ -28,43 +28,43 @@ sequenceDiagram
     LSPTool-->>Agent: text
 ```
 
-## The 14 operations
+## 14 个操作
 
-| # | Op | LSP method | What it does |
+| # | Op | LSP method | 作用 |
 |---|-----|------------|--------------|
-| 1 | `lsp_hover` | `textDocument/hover` | Show type + docs at a position |
-| 2 | `lsp_definition` | `textDocument/definition` | Jump to symbol definition |
-| 3 | `lsp_references` | `textDocument/references` | Find all uses of a symbol |
-| 4 | `lsp_completion` | `textDocument/completion` | Auto-complete at a position |
-| 5 | `lsp_signature` | `textDocument/signatureHelp` | Show function signature |
-| 6 | `lsp_codeAction` | `textDocument/codeAction` | Quick fixes / refactors |
-| 7 | `lsp_rename` | `textDocument/rename` | Rename a symbol across files |
-| 8 | `lsp_format` | `textDocument/formatting` | Format whole file |
-| 9 | `lsp_rangeFormat` | `textDocument/rangeFormatting` | Format a range |
-| 10 | `lsp_prepareRename` | `textDocument/prepareRename` | Check if rename is valid |
-| 11 | `lsp_documentSymbol` | `textDocument/documentSymbol` | List all symbols in a file |
-| 12 | `lsp_semanticTokens` | `textDocument/semanticTokens` | Syntax highlighting tokens |
-| 13 | `lsp_inlayHint` | `textDocument/inlayHint` | Inline type hints |
-| 14 | `lsp_diagnostic` | `textDocument/diagnostic` | Pull diagnostics (errors/warnings) |
+| 1 | `lsp_hover` | `textDocument/hover` | 在某位置展示类型 + 文档 |
+| 2 | `lsp_definition` | `textDocument/definition` | 跳转到符号定义 |
+| 3 | `lsp_references` | `textDocument/references` | 找出符号的所有使用 |
+| 4 | `lsp_completion` | `textDocument/completion` | 在某位置自动补全 |
+| 5 | `lsp_signature` | `textDocument/signatureHelp` | 展示函数签名 |
+| 6 | `lsp_codeAction` | `textDocument/codeAction` | 快速修复 / 重构 |
+| 7 | `lsp_rename` | `textDocument/rename` | 跨文件重命名符号 |
+| 8 | `lsp_format` | `textDocument/formatting` | 格式化整个文件 |
+| 9 | `lsp_rangeFormat` | `textDocument/rangeFormatting` | 格式化一段范围 |
+| 10 | `lsp_prepareRename` | `textDocument/prepareRename` | 检查重命名是否合法 |
+| 11 | `lsp_documentSymbol` | `textDocument/documentSymbol` | 列出文件中的所有符号 |
+| 12 | `lsp_semanticTokens` | `textDocument/semanticTokens` | 语法高亮 token |
+| 13 | `lsp_inlayHint` | `textDocument/inlayHint` | 内联类型提示 |
+| 14 | `lsp_diagnostic` | `textDocument/diagnostic` | 拉取诊断（错误/警告） |
 
-The agent can call **any** of these 14 as if they were ordinary tools.
+Agent 可以像调用普通工具一样调用这 **14** 个中的**任意一个**。
 
-## The LSP client
+## LSP 客户端
 
-`packages/coding-agent/src/core/tools/lsp/client.ts` is a **pooled** LSP client:
+`packages/coding-agent/src/core/tools/lsp/client.ts` 是一个**池化**的 LSP 客户端：
 
 ```ts
 export class LspClientPool {
-  // One client per language, lazily spawned
+  // 每种语言一个客户端，按需惰性生成
   async getClient(language: string): Promise<LspClient>;
-  
-  // Send a request to the right client
+
+  // 向对应的客户端发送请求
   async request<TReq, TRes>(language: string, method: string, params: TReq): Promise<TRes>;
-  
-  // Hot-reload when a new file is opened
+
+  // 新文件打开时热加载
   async didOpen(file: string): Promise<void>;
-  
-  // Notify on file change
+
+  // 文件变更时通知
   async didChange(file: string, content: string): Promise<void>;
 }
 
@@ -78,16 +78,16 @@ export interface LspClient {
 }
 ```
 
-The pool:
+该连接池具有以下特点：
 
-1. **Lazy** — spawns a language server only on first request for that language
-2. **Pooled** — reuses the same client for all requests to the same language
-3. **Stateful** — sends `didOpen` automatically when a file is first requested
-4. **Resilient** — restarts the server if it crashes (with backoff)
+1. **惰性** —— 只在该语言的第一次请求时才生成 language server
+2. **池化** —— 对同一语言的所有请求复用同一客户端
+3. **有状态** —— 当文件首次被请求时自动发送 `didOpen`
+4. **有韧性** —— server 崩溃时按退避策略重启
 
-## Server registry
+## server 注册表
 
-`packages/coding-agent/src/core/tools/lsp/servers.ts` declares the bundled servers:
+`packages/coding-agent/src/core/tools/lsp/servers.ts` 声明了内置的 server：
 
 ```ts
 export const LSP_SERVERS: Record<string, LspServerSpec> = {
@@ -119,26 +119,26 @@ export const LSP_SERVERS: Record<string, LspServerSpec> = {
     filetypes: [".go"],
     rootPatterns: ["go.mod"]
   },
-  // ... 30+ more
+  // ... 30+ 还可以
 };
 ```
 
-The pool checks the `command` is on `PATH` and prompts the user with `installHint` if not. The 30+ bundled languages:
+连接池会检查 `command` 是否在 `PATH` 中，若不在则用 `installHint` 提示用户。30+ 内置语言如下：
 
-| Category | Languages |
+| 类别 | 语言 |
 |----------|-----------|
-| **Web** | TypeScript, JavaScript, HTML, CSS, SCSS, Vue, Svelte |
-| **Systems** | C, C++, Rust, Go, Zig |
-| **JVM** | Java, Kotlin, Scala, Groovy |
-| **Scripting** | Python, Ruby, Perl, PHP, Lua, Bash |
-| **Mobile** | Swift, Dart |
-| **Functional** | Haskell, OCaml, Elixir, Erlang, Clojure, F# |
-| **Data** | JSON, YAML, TOML, XML |
-| **Other** | Markdown, SQL, GraphQL, HCL, Dockerfile |
+| **Web** | TypeScript、JavaScript、HTML、CSS、SCSS、Vue、Svelte |
+| **Systems** | C、C++、Rust、Go、Zig |
+| **JVM** | Java、Kotlin、Scala、Groovy |
+| **Scripting** | Python、Ruby、Perl、PHP、Lua、Bash |
+| **Mobile** | Swift、Dart |
+| **Functional** | Haskell、OCaml、Elixir、Erlang、Clojure、F# |
+| **Data** | JSON、YAML、TOML、XML |
+| **Other** | Markdown、SQL、GraphQL、HCL、Dockerfile |
 
-## The 14 tool definitions
+## 14 个工具定义
 
-Each tool is a thin wrapper around `LspClientPool.request()`. Example:
+每个工具都是 `LspClientPool.request()` 的薄包装。示例：
 
 ```ts
 // packages/coding-agent/src/core/tools/lsp/hover.ts
@@ -162,16 +162,16 @@ const hoverTool: AgentTool<typeof HoverArgs> = {
     if (!language) {
       return { content: [{ type: "text", text: `No LSP server for ${args.file}` }], isError: true };
     }
-    
+
     const result = await ctx.lsp.request(language, "textDocument/hover", {
       textDocument: { uri: pathToUri(args.file) },
       position: { line: args.line, character: args.character }
     });
-    
+
     if (!result) {
       return { content: [{ type: "text", text: "No hover information available" }] };
     }
-    
+
     return {
       content: [{ type: "text", text: result.contents.value || result.contents }],
       details: { range: result.range }
@@ -180,11 +180,11 @@ const hoverTool: AgentTool<typeof HoverArgs> = {
 };
 ```
 
-All 14 tools follow this pattern. The `execute` function is **3-10 lines** — the heavy lifting is in the LSP server.
+所有 14 个工具都遵循同样的模式。`execute` 函数只有 **3-10 行** —— 重活都在 LSP server 里。
 
-## How the agent uses LSP
+## Agent 如何使用 LSP
 
-The agent can chain LSP operations to understand code:
+Agent 可以串联 LSP 操作来理解代码：
 
 ```mermaid
 sequenceDiagram
@@ -193,33 +193,33 @@ sequenceDiagram
 
     Agent->>LSP: lsp_documentSymbol("src/auth/login.ts")
     LSP-->>Agent: [LoginService, authenticate, logout, ...]
-    
+
     Agent->>LSP: lsp_hover("src/auth/login.ts", 12, 8)
     Note over Agent: hover on `authenticate` param
     LSP-->>Agent: "credentials: Credentials (interface)"
-    
+
     Agent->>LSP: lsp_definition("src/auth/login.ts", 12, 8)
     LSP-->>Agent: "src/auth/types.ts:24"
-    
+
     Agent->>LSP: lsp_references("src/auth/types.ts", 24, 17)
     LSP-->>Agent: [3 call sites in 2 files]
-    
+
     Agent->>LSP: lsp_signature("src/auth/login.ts", 12, 8)
     LSP-->>Agent: "authenticate(credentials: Credentials, options?: { rememberMe: boolean }): Promise<Session>"
-    
+
     Note over Agent: Now I understand the API surface
 ```
 
-The agent uses this to:
+Agent 用它来：
 
-- **Read** the API surface before refactoring
-- **Find** all call sites of a function before renaming
-- **Apply** code actions (e.g. "extract method")
-- **Format** the changed code
+- **阅读**重构前的 API 表面
+- **查找**函数的所有调用点再改名
+- **应用**代码动作（例如 "extract method"）
+- **格式化**改过的代码
 
-## LSP-based refactoring workflow
+## 基于 LSP 的重构工作流
 
-The agent can do a **safe multi-file refactor** using LSP:
+Agent 可以用 LSP 进行**安全的多文件重构**：
 
 ```mermaid
 sequenceDiagram
@@ -229,7 +229,7 @@ sequenceDiagram
 
     Agent->>LSP: lsp_references("oldName", position)
     LSP-->>Agent: [10 call sites in 4 files]
-    
+
     loop for each call site
         Agent->>LSP: lsp_prepareRename(callSite, "newName")
         LSP-->>Agent: { range: ... }
@@ -237,15 +237,15 @@ sequenceDiagram
         LSP-->>Agent: { changes: [{ file, edits }] }
         Agent->>FS: apply edits
     end
-    
+
     Agent->>LSP: lsp_format(all changed files)
     LSP-->>Agent: formatted content
     Agent->>FS: apply formatting
 ```
 
-The LSP gives the agent **edit ranges and text edits** — the agent just applies them. No regex, no string match. The result is **safe**: if the symbol is referenced in a comment or string, the rename skips it.
+LSP 把**编辑范围与文本编辑项**告诉 Agent —— Agent 只需要应用它们。没有正则，没有字符串匹配。结果是**安全的**：如果符号出现在注释或字符串中，重命名会自动跳过。
 
-## The lifecycle
+## 生命周期
 
 ```mermaid
 stateDiagram-v2
@@ -261,42 +261,42 @@ stateDiagram-v2
   ShuttingDown --> [*]
 ```
 
-A client is kept alive for the duration of the session. On session end, `shutdown()` is called (graceful: send `shutdown` request, then `exit` notification, then SIGTERM, then SIGKILL).
+客户端在整个会话期间保持存活。会话结束时调用 `shutdown()`（优雅：发送 `shutdown` 请求，再发 `exit` 通知，再 SIGTERM，最后 SIGKILL）。
 
-## Why LSP and not direct AST
+## 为什么是 LSP 而不是直接 AST
 
-LSP gives the agent **more** than a parser can:
+LSP 给 Agent 的能力**远超**普通解析器：
 
-- **Type info** — LSP knows the *type* of every expression (parsers only know the syntax)
-- **Cross-file references** — LSP tracks which files reference which symbols
-- **Quick fixes** — LSP can suggest refactorings (e.g. "extract method")
-- **Format** — LSP knows the project's formatter config
-- **Diagnostics** — LSP runs the same linter as your editor
+- **类型信息** — LSP 知道每个表达式的*类型*（解析器只知道语法）
+- **跨文件引用** — LSP 跟踪哪些文件引用了哪些符号
+- **快速修复** — LSP 可以建议重构（例如 "extract method"）
+- **格式化** — LSP 知道项目的格式化器配置
+- **诊断** — LSP 运行与编辑器相同的 linter
 
-A direct AST (via tree-sitter) only knows **what the code looks like**, not **what it means**. For refactoring, LSP is essential.
+直接的 AST（通过 tree-sitter）只关心**代码长什么样**，而不关心**代码是什么意思**。要做重构，LSP 是必需的。
 
-## The trade-off
+## 取舍
 
-LSP requires:
+LSP 要求：
 
-- A language server to be installed (the user must have it on PATH)
-- ~200ms startup time per language (some are slow)
-- Memory (~50-200MB per language server)
+- 必须安装 language server（用户机器上要有，并且在 PATH 中）
+- 每种语言约 200ms 的启动时间（有些较慢）
+- 内存（每种语言 server 约 50-200MB）
 
-For projects that don't have an LSP server (e.g. proprietary DSLs), the agent falls back to **AST-based operations** via `pi-ast` (the Rust core). The two complement each other: LSP for standard languages, AST for everything else.
+对于没有 LSP server 的项目（例如自研 DSL），Agent 会回退到通过 `pi-ast`（Rust 核心）进行 **基于 AST 的操作**。二者互为补充：LSP 负责标准语言，AST 负责其他所有。
 
-## Configuration
+## 配置
 
-`~/.omp/settings.json`:
+`~/.omp/settings.json`：
 
 ```json
 {
   "lsp": {
     "enabled": true,
-    "autoInstall": true,             // Prompt to install missing servers
-    "maxConcurrent": 5,              // Max simultaneous servers
-    "timeout": 30000,                // 30s per request
-    "disabledLanguages": ["php"],    // Skip these
+    "autoInstall": true,             // 提示安装缺失的 server
+    "maxConcurrent": 5,              // 最大并发 server 数
+    "timeout": 30000,                // 每次请求 30s
+    "disabledLanguages": ["php"],    // 跳过这些
     "customServers": {
       "my-dsl": {
         "command": "my-dsl-server",
@@ -308,26 +308,26 @@ For projects that don't have an LSP server (e.g. proprietary DSLs), the agent fa
 }
 ```
 
-The `customServers` field lets users add their own language servers.
+`customServers` 字段允许用户添加自己的 language server。
 
-## Performance
+## 性能
 
-LSP responses are typically 5-50ms. The agent can batch multiple LSP requests in parallel (e.g. `lsp_documentSymbol` for 10 files at once) and the pool serializes them per-server.
+LSP 响应通常在 5-50ms。Agent 可以并行批量发起多个 LSP 请求（例如同时为 10 个文件调用 `lsp_documentSymbol`），连接池会对每个 server 的请求串行化。
 
-The lazy-spawn design means **the first request for a language takes ~200ms** (server startup); subsequent requests are ~10ms. The pool keeps the server alive for the session.
+惰性生成的设计意味着**某语言的第一次请求需要约 200ms**（server 启动）；后续请求约 10ms。连接池在整个会话期间保持 server 存活。
 
-## What's NOT supported
+## 暂不支持
 
-- **Multi-root workspaces** — the pool currently supports one project root
-- **LSP progress notifications** — sent to logs, not surfaced in the TUI
-- **LSP work-done progress** — not implemented yet
-- **LSP semantic tokens modifiers** — only the base 14 operations
+- **多根工作区** — 当前的连接池只支持一个项目根
+- **LSP 进度通知** — 会写入日志，但不会显示在 TUI 中
+- **LSP work-done progress** — 尚未实现
+- **LSP semantic tokens 修饰符** — 只支持基础 14 个操作
 
-These are tracked as future work.
+这些都登记在后续工作中。
 
-## Next
+## 接下来
 
-- [DAP](/docs/07-dap) — the debug adapter protocol
-- [hashline](/docs/08-hashline) — line:hash editing
-- [32 Built-in Tools](/docs/09-tools) — all 32 tools
-- [pi-ast](/docs/01-rust-core) — the AST fallback
+- [DAP](/docs/07-dap) — 调试适配器协议
+- [hashline](/docs/08-hashline) — line:hash 编辑
+- [32 个内建工具](/docs/09-tools) — 所有 32 个工具
+- [pi-ast](/docs/01-rust-core) — AST 回退方案

@@ -1,21 +1,21 @@
-# 01 · Rust Core — pi-ast, pi-shell, pi-iso
+# 01 · Rust 核心 — pi-ast、pi-shell、pi-iso
 
-The Rust core is the **performance differentiator** of oh-my-pi. Three crates — `pi-ast`, `pi-shell`, `pi-iso` — replace three hot paths in pi-mono (substring edit, process spawn, filesystem ops) with native implementations that are **10-50× faster** and **safer** (no orphan processes, copy-on-write isolation).
+Rust 核心是 oh-my-pi 的 **性能差异点**。三个 crate —— `pi-ast`、`pi-shell`、`pi-iso` —— 替换了 pi-mono 中的三条热路径（子串编辑、进程派生、文件系统操作）,原生实现 **快 10-50 倍**,且 **更安全**（无孤儿进程、copy-on-write 隔离）。
 
-**Source:** `crates/pi-ast/`, `crates/pi-shell/`, `crates/pi-iso/`, `crates/pi-natives/`, `crates/brush-core-vendored/`, `crates/brush-builtins-vendored/`
+**源码位置:** `crates/pi-ast/`、`crates/pi-shell/`、`crates/pi-iso/`、`crates/pi-natives/`、`crates/brush-core-vendored/`、`crates/brush-builtins-vendored/`
 
-## The 3 crates
+## 三个 crate
 
 ```mermaid
 graph TB
-  subgraph TS["TypeScript packages"]
+  subgraph TS["TypeScript 包"]
     Hashline[hashline]
     Coding[pi-coding-agent]
     Snappy[snapcompact]
   end
 
   subgraph Natives["pi-natives (NAPI)"]
-    Load[napi-rs bindings]
+    Load[napi-rs 绑定]
   end
 
   subgraph Ast["pi-ast"]
@@ -54,71 +54,71 @@ graph TB
   Vendored --> Builtins[brush-builtins<br/>vendored]
 ```
 
-## pi-ast — AST + edit ops
+## pi-ast — AST + 编辑操作
 
-`pi-ast` is the **structural editing primitive**. It parses source files into ASTs and exposes 4 operations:
+`pi-ast` 是 **结构化编辑原语**。它将源文件解析为 AST,并暴露 4 个操作:
 
 ```ts
 import { native } from "@oh-my-pi/pi-natives";
 
-// 1. Parse a file
+// 1. 解析文件
 const ast = await native.parseAst({
   path: "src/index.ts",
   content: fileContent,
   language: "typescript"
 });
 
-// 2. Find a node by selector
+// 2. 通过 selector 查找节点
 const fn = native.findNode(ast, "function[name='greet']");
 // → { start: 12, end: 30, content: "function greet() { ... }" }
 
-// 3. Replace the node
+// 3. 替换该节点
 const newAst = native.replaceNode(ast, fn, "function greet(name: string) { ... }");
 
-// 4. Write back
+// 4. 写回
 const newContent = native.serializeAst(newAst, { preserveComments: true });
 ```
 
-The 4 operations:
+四个操作:
 
-| Op | Purpose | Use case |
+| 操作 | 用途 | 适用场景 |
 |----|---------|----------|
-| `parseAst` | Parse file → AST | Foundation |
-| `findNode` | Locate a unique node by selector | Refactor, edit |
-| `replaceNode` | Replace a node (preserves comments + formatting) | Safe file edits |
-| `serializeAst` | AST → text | Write back |
+| `parseAst` | 文件 → AST | 基础 |
+| `findNode` | 通过 selector 定位唯一节点 | 重构、编辑 |
+| `replaceNode` | 替换节点（保留注释与格式） | 安全的文件编辑 |
+| `serializeAst` | AST → 文本 | 写回 |
 
-The `block.rs` module is the **AST block** — a chunk of source identified by start/end bytes and a node type. `ops.rs` implements the 4 operations. `summary.rs` generates a short summary of a function/class for the LLM (e.g. "function `greet(name: string): void` — 1 param, 1 return").
+`block.rs` 模块是 **AST block** —— 通过 start/end 字节和节点类型标识的一段源代码。`ops.rs` 实现 4 个操作。`summary.rs` 为 LLM 生成函数/类的简短摘要（例如 "function `greet(name: string): void` — 1 param, 1 return"）。
 
-### Language support
+### 语言支持
 
-`pi-ast/language/` contains tree-sitter grammars for 50+ languages. Each is compiled to a **separate** WASM blob (not bundled into the main `.node` file) to keep the binary small. Loaded on demand:
+`pi-ast/language/` 包含 50+ 语言的 tree-sitter 文法。每个被编译为 **独立的** WASM blob（不打包进主 `.node` 文件）,以保持二进制体积。按需加载:
 
 ```ts
 await native.loadLanguage("rust");
 const ast = await native.parseAst({ path: "main.rs", content, language: "rust" });
 ```
 
-Languages bundled:
+内置语言:
 
-- **Systems** — C, C++, Rust, Go, Zig
-- **Web** — TypeScript, JavaScript, TSX, JSX, HTML, CSS, SCSS, Vue, Svelte
-- **Mobile** — Swift, Kotlin, Dart
-- **Scripting** — Python, Ruby, Perl, PHP, Lua, Bash, Fish, Zsh
-- **Data** — JSON, YAML, TOML, XML
-- **Other** — Markdown, SQL, GraphQL, HCL, Dockerfile, Makefile, Protobuf
+- **系统级** —— C、C++、Rust、Go、Zig
+- **Web** —— TypeScript、JavaScript、TSX、JSX、HTML、CSS、SCSS、Vue、Svelte
+- **移动端** —— Swift、Kotlin、Dart
+- **脚本** —— Python、Ruby、Perl、PHP、Lua、Bash、Fish、Zsh
+- **数据** —— JSON、YAML、TOML、XML
+- **其他** —— Markdown、SQL、GraphQL、HCL、Dockerfile、Makefile、Protobuf
 
 ### Vendored brush-core
 
-The shell parser is **vendored** from the upstream `brush` project via `git subtree`:
+shell 解析器从上游 `brush` 项目通过 `git subtree` **vendored**:
 
 ```
 crates/
-├── brush-core-vendored/      # shell parser (git subtree)
-└── brush-builtins-vendored/  # shell builtins (git subtree)
+├── brush-core-vendored/      # shell 解析器（git subtree）
+└── brush-builtins-vendored/  # shell 内建命令（git subtree）
 ```
 
-These are pinned in `Cargo.toml` via `[patch.crates-io]`:
+这些依赖在 `Cargo.toml` 中通过 `[patch.crates-io]` 钉住:
 
 ```toml
 [patch.crates-io]
@@ -126,15 +126,15 @@ brush-core = { path = "crates/brush-core-vendored" }
 brush-builtins = { path = "crates/brush-builtins-vendored" }
 ```
 
-The vendor is needed because:
+vendored 的原因是:
 
-1. `pi-shell` parses shell commands to build the minimizer
-2. Network access during `cargo build` is **not allowed** (locked-down supply chain)
-3. The brush project is small and stable; subtree updates are infrequent
+1. `pi-shell` 解析 shell 命令以构建 minimizer
+2. `cargo build` 期间 **不允许** 网络访问（锁死的供应链）
+3. brush 项目小而稳定;subtree 更新不频繁
 
-## pi-shell — Process control
+## pi-shell — 进程控制
 
-`pi-shell` is a **safe, cancelable, resource-bounded** process wrapper for the `bash` tool.
+`pi-shell` 是 `bash` 工具的 **安全、可取消、有资源边界** 的进程包装器。
 
 ```rust
 // crates/pi-shell/src/process.rs
@@ -157,18 +157,18 @@ pub async fn run(command: &str, opts: RunOptions) -> Result<ProcessResult>;
 pub fn kill_tree(pid: u32, signal: Signal) -> Result<()>;
 ```
 
-Features over Node's `child_process`:
+相对 Node `child_process` 的优势:
 
-- **Cancel propagation** — `kill_tree()` walks the entire process group and SIGTERMs every child (no orphans)
-- **Output streaming** — stdout/stderr are `tokio::sync::mpsc::Receiver<Bytes>`, not `Buffer` (true streaming)
-- **Cross-platform** — `process.rs` for Unix, `windows.rs` for Windows (ConPTY for proper TTY emulation)
-- **Resource limits** — `setrlimit` on Linux, `JobObject` on Windows
-- **Process group** — each child runs in its own process group, so kill is recursive
-- **Working dir inheritance** — the process inherits the agent's cwd, not the CLI's
+- **取消传播** —— `kill_tree()` 遍历整个进程组并对每个子进程发送 SIGTERM（无孤儿进程）
+- **输出流式传输** —— stdout/stderr 是 `tokio::sync::mpsc::Receiver<Bytes>`,而不是 `Buffer`（真正的流式）
+- **跨平台** —— Unix 用 `process.rs`,Windows 用 `windows.rs`（ConPTY 提供真正的 TTY 模拟）
+- **资源限制** —— Linux 上用 `setrlimit`,Windows 上用 `JobObject`
+- **进程组** —— 每个子进程都在自己的进程组中运行,支持递归 kill
+- **工作目录继承** —— 进程继承 Agent 的 cwd,而不是 CLI 的
 
-### The command minimizer
+### 命令 minimizer
 
-`pi-shell/minimizer/` is the **safety layer** for the `bash` tool:
+`pi-shell/minimizer/` 是 `bash` 工具的 **安全层**:
 
 ```rust
 // crates/pi-shell/src/minimizer.rs
@@ -189,21 +189,21 @@ pub enum MinimizerWarning {
 }
 ```
 
-The minimizer:
+minimizer 会:
 
-1. Parses the shell command via `brush-core`
-2. Walks the AST
-3. Flags dangerous patterns:
-   - `rm -rf /`, `rm -rf ~`, `rm -rf .*`
-   - `curl ... | sh`, `wget ... | bash`
-   - `sudo`, `su`, `chmod 777`
-   - `npm install <unscoped-pkg>` (unpinned)
-   - Network access to non-allowlisted hosts
-4. Returns the parsed AST + warnings
+1. 通过 `brush-core` 解析 shell 命令
+2. 遍历 AST
+3. 标记危险 pattern:
+   - `rm -rf /`、`rm -rf ~`、`rm -rf .*`
+   - `curl ... | sh`、`wget ... | bash`
+   - `sudo`、`su`、`chmod 777`
+   - `npm install <unscoped-pkg>`（未钉版本）
+   - 访问不在白名单内的主机的网络请求
+4. 返回解析后的 AST + 警告
 
-The agent loop reads the warnings and **prompts the user** before running dangerous commands. This is the same model as `beforeToolCall` hooks, but implemented in native code (faster, harder to bypass).
+Agent 循环读取警告,在运行危险命令前 **询问用户**。这与 `beforeToolCall` hook 模式相同,但用原生代码实现（更快、更难绕过）。
 
-### Cancellation
+### 取消
 
 ```rust
 // crates/pi-shell/src/cancel.rs
@@ -221,12 +221,12 @@ impl CancelToken {
     }
 }
 
-// In run():
+// 在 run() 中:
 tokio::select! {
     _ = cancel_token.cancelled() => {
-        // SIGTERM the process group
+        // 向进程组发送 SIGTERM
         process.kill_tree(SIGTERM)?;
-        // Give 1s grace, then SIGKILL
+        // 留 1s 宽限,然后 SIGKILL
         tokio::time::sleep(Duration::from_secs(1)).await;
         if process.is_alive() {
             process.kill_tree(SIGKILL)?;
@@ -236,21 +236,21 @@ tokio::select! {
 }
 ```
 
-Three-step cancellation: SIGTERM → 1s grace → SIGKILL. No orphan processes, even for long-running tasks like `npm install`.
+三步取消:SIGTERM → 1s 宽限期 → SIGKILL。即便是 `npm install` 这样的长时间任务,也不会产生孤儿进程。
 
-## pi-iso — Filesystem isolation
+## pi-iso — 文件系统隔离
 
-`pi-iso` is the **most novel** crate. It picks the right filesystem primitive per OS for cheap copy-on-write clones:
+`pi-iso` 是 **最具创新性的** crate。它为不同操作系统选择合适的文件系统原语,实现廉价的 copy-on-write 克隆:
 
 ```rust
 // crates/pi-iso/src/lib.rs
 pub enum FsPrimitive {
     ApfsClone,         // macOS
     BtrfsReflink,      // Linux with BTRFS
-    OverlayFs,         // Linux containers
+    OverlayFs,         // Linux 容器
     ProjFs,            // Windows
-    ReflinkGeneric,    // Linux other (ext4 with reflink support)
-    FullCopy,          // Fallback
+    ReflinkGeneric,    // Linux 其他（支持 reflink 的 ext4）
+    FullCopy,          // 回退
 }
 
 pub struct Snapshot {
@@ -269,20 +269,20 @@ pub fn diff(snap_a: &Snapshot, snap_b: &Snapshot) -> Result<FileDiff>;
 pub fn discard(snapshot: &Snapshot) -> Result<()>;
 ```
 
-### Per-OS implementations
+### 各 OS 实现
 
-| OS | Module | Mechanism | Speed |
+| OS | 模块 | 机制 | 速度 |
 |----|--------|-----------|-------|
-| macOS | `apfs.rs` | `clonefile()` syscall | ~1ms (metadata only) |
-| Linux (BTRFS) | `btrfs.rs` | `ioctl(FICLONE)` reflink | ~1ms |
-| Linux (overlayfs) | `overlayfs.rs` | `mount -t overlay` | ~10ms |
-| Linux (ext4 + reflink) | `reflink.rs` + `linux_reflink.rs` | `ioctl(FICLONE)` | ~1ms |
+| macOS | `apfs.rs` | `clonefile()` 系统调用 | ~1ms（仅元数据） |
+| Linux（BTRFS） | `btrfs.rs` | `ioctl(FICLONE)` reflink | ~1ms |
+| Linux（overlayfs） | `overlayfs.rs` | `mount -t overlay` | ~10ms |
+| Linux（ext4 + reflink） | `reflink.rs` + `linux_reflink.rs` | `ioctl(FICLONE)` | ~1ms |
 | Windows | `projfs.rs` | Windows ProjFS | ~5ms |
-| Fallback | `rcopy.rs` | `cp -r` | O(size) — slow but works |
+| 回退 | `rcopy.rs` | `cp -r` | O(size) —— 慢但能用 |
 
-The `detect_primitive()` function probes the filesystem at the project root and picks the right one. On macOS, APFS is always available; on Linux, BTRFS/reflink/ext4 is detected via `statfs` magic numbers; on Windows, ProjFS is detected via the `Projection` capability.
+`detect_primitive()` 函数探测项目根目录所在的文件系统,选择合适的原语。macOS 上 APFS 总是可用;Linux 上通过 `statfs` magic number 检测 BTRFS/reflink/ext4;Windows 上通过 `Projection` 能力检测 ProjFS。
 
-### The session lifecycle uses pi-iso
+### 会话生命周期使用 pi-iso
 
 ```mermaid
 sequenceDiagram
@@ -293,45 +293,45 @@ sequenceDiagram
 
     U->>CLI: omp [args]
     CLI->>Iso: snapshot(project)
-    Iso-->>CLI: snapshotId (~1ms via reflink)
+    Iso-->>CLI: snapshotId（~1ms,经 reflink）
     CLI->>Session: open(snapshotId, model, tools)
-    Note over Session, Iso: Agent makes edits<br/>(target = snapshotId)
+    Note over Session, Iso: Agent 进行编辑<br/>(target = snapshotId)
     U->>CLI: /exit
     CLI->>Iso: diff(snapshotId, current)
     Iso-->>CLI: fileChanges
-    CLI->>U: "I changed these files. Commit? Restore?"
+    CLI->>U: "我修改了这些文件。提交?回滚?"
     alt commit
         U->>CLI: commit
         CLI->>Iso: keep snapshot
     else restore
         U->>CLI: restore
-        CLI->>Iso: restore(snapshotId) (~1ms)
+        CLI->>Iso: restore(snapshotId)（~1ms）
     end
 ```
 
-The agent's edits **land in the snapshot**, not in the real project. On commit, the snapshot is merged (a rename). On restore, the snapshot is deleted and the original is unchanged.
+Agent 的编辑 **落在快照里**,而不是真实项目。提交时,快照被合并（一次重命名）。回滚时,快照被删除,原项目保持不变。
 
-This makes the agent **fully reversible** — `omp` can safely run `rm -rf` and `git reset --hard` because the worst case is "restore the snapshot".
+这让 Agent **完全可逆** —— `omp` 可以放心运行 `rm -rf` 和 `git reset --hard`,因为最坏情况也就是"恢复快照"。
 
-### Recursive copy with reflink
+### 借助 reflink 的递归复制
 
-`rcopy.rs` is a **custom** `cp -r` that uses the FS primitive:
+`rcopy.rs` 是一个 **自定义的** `cp -r`,使用 FS 原语:
 
 ```rust
 pub fn rcopy(source: &Path, target: &Path, primitive: FsPrimitive) -> Result<()> {
     if primitive == FsPrimitive::ApfsClone || primitive == FsPrimitive::BtrfsReflink {
-        // Single syscall per file
+        // 每个文件一次系统调用
         clonefile(source, target)?;
     } else {
-        // Fall back to read+write
+        // 回退到 read+write
         std::fs::copy(source, target)?;
     }
 }
 ```
 
-For a 10k-file project, this is the difference between **1 second** (BTRFS) and **30 seconds** (cp -r).
+对 1 万个文件的项目,这就是 **1 秒**（BTRFS）和 **30 秒**（cp -r）的区别。
 
-### diff between two snapshots
+### 快照之间的 diff
 
 ```rust
 pub struct FileDiff {
@@ -344,11 +344,11 @@ pub struct FileDiff {
 pub fn diff(a: &Snapshot, b: &Snapshot) -> Result<FileDiff>;
 ```
 
-The diff is computed via a single `walkdir` over both trees, comparing mtime + size + content hash. Used by the agent to summarise what it did, and by the CLI to show the user before commit/restore.
+diff 通过对两棵树各执行一次 `walkdir` 计算,比较 mtime + size + content hash。Agent 用它来总结自己做了什么,CLI 在 commit/restore 前向用户展示。
 
-## pi-natives — NAPI bridge
+## pi-natives — NAPI 桥
 
-`pi-natives` is the **NAPI wrapper** that exposes the 3 Rust crates to TypeScript:
+`pi-natives` 是将 3 个 Rust crate 暴露给 TypeScript 的 **NAPI 封装**:
 
 ```ts
 // packages/pi-natives/src/native.ts
@@ -356,11 +356,11 @@ import { loadNative } from "./loader.js";
 
 const native = loadNative({
   packages: ["pi-iso", "pi-ast", "pi-shell"],
-  // Falls back to JS if native is missing
+  // 原生缺失时回退到 JS
   fallback: jsFallback
 });
 
-// Examples
+// 示例
 await native.iso.snapshot("/path/to/project");
 await native.iso.restore(snapshotId);
 await native.iso.diff(snapA, snapB);
@@ -368,18 +368,18 @@ await native.ast.parseAst({ path, content, language });
 await native.shell.run("ls -la", { cwd: "/workspace" });
 ```
 
-The loader:
+loader:
 
-1. Detects platform (`process.platform`) and arch (`process.arch`)
-2. Loads the matching `.node` file from `bin/<platform>-<arch>/`
-3. Wraps each native function in a typed Promise
-4. Provides a JS fallback if the native module is missing
+1. 检测平台（`process.platform`）和架构（`process.arch`）
+2. 从 `bin/<platform>-<arch>/` 加载匹配的 `.node` 文件
+3. 将每个原生函数包装为类型化的 Promise
+4. 在原生模块缺失时提供 JS 回退
 
-### Why NAPI not WASM
+### 为什么是 NAPI 而非 WASM
 
-NAPI compiles to a **native .node** file (machine code). WASM is bytecode in a sandbox. For compute-heavy operations, NAPI is **5-10× faster** than WASM. Trade-off: a separate `.node` file per platform (4 platform-arch combos × 3 crates = 12 binaries in the dist).
+NAPI 编译为 **原生 .node** 文件（机器码）。WASM 是沙箱中的字节码。对于计算密集型操作,NAPI 比 WASM **快 5-10 倍**。取舍:每个平台一个 `.node` 文件（4 个平台-架构组合 × 3 个 crate = dist 中共 12 个二进制文件）。
 
-### TypeScript types via napi-derive
+### 通过 napi-derive 提供 TypeScript 类型
 
 ```rust
 // crates/pi-iso/src/lib.rs
@@ -397,70 +397,70 @@ pub struct Snapshot {
 }
 ```
 
-`napi-derive` generates the TypeScript types automatically at build time:
+`napi-derive` 在构建时自动生成 TypeScript 类型:
 
 ```ts
-// packages/pi-natives/src/types.d.ts (auto-generated)
+// packages/pi-natives/src/types.d.ts（自动生成）
 export interface Snapshot {
   id: string;
   primitive: string;
   source: string;
   target: string;
   createdAt: string;
-  sizeBytes: number;  // bigint → number conversion
+  sizeBytes: number;  // bigint → number 转换
 }
 ```
 
-The TypeScript types are regenerated on every `cargo build` and checked in. No drift.
+TypeScript 类型在每次 `cargo build` 时重新生成并 check in。不会漂移。
 
-## Performance: TS vs Rust
+## 性能:TS vs Rust
 
-Measured on a MacBook Pro M2 Max, 10k-file project:
+在 MacBook Pro M2 Max、1 万文件项目上的测量:
 
-| Operation | TypeScript | Rust (NAPI) | Speedup |
+| 操作 | TypeScript | Rust (NAPI) | 加速比 |
 |-----------|------------|-------------|---------|
-| `snapshot` (BTRFS) | 1.2s (`cp -r`) | 1ms (`ioctl`) | **1200×** |
+| `snapshot`（BTRFS） | 1.2s（`cp -r`） | 1ms（`ioctl`） | **1200×** |
 | `restore` | 1.2s | 1ms | **1200×** |
-| `parseAst` (1000 LOC TS) | 80ms (web-tree-sitter WASM) | 8ms (tree-sitter-rs) | **10×** |
-| `replaceNode` (1 change) | 5ms (string match) | 0.5ms (AST) | **10×** |
-| `run` shell (cold) | 200ms (`child_process.spawn`) | 8ms (`std::process::Command`) | **25×** |
-| `run` shell (warm) | 50ms | 5ms | **10×** |
-| `kill_tree` (5 child processes) | 100ms (manual kill loop) | 0.1ms (killpg) | **1000×** |
+| `parseAst`（1000 行 TS） | 80ms（web-tree-sitter WASM） | 8ms（tree-sitter-rs） | **10×** |
+| `replaceNode`（1 处修改） | 5ms（字符串匹配） | 0.5ms（AST） | **10×** |
+| `run` shell（冷） | 200ms（`child_process.spawn`） | 8ms（`std::process::Command`） | **25×** |
+| `run` shell（热） | 50ms | 5ms | **10×** |
+| `kill_tree`（5 个子进程） | 100ms（手动 kill 循环） | 0.1ms（killpg） | **1000×** |
 
-The Rust crates are **not in every turn** — they're called when `hashline`, `bash`, or `snap` tools are used. Most of the agent's time is spent in the LLM stream (network-bound), so the Rust speedups are about **latency-critical operations** (e.g. when the user hits Ctrl-C).
+Rust crate **并非每轮都涉及** —— 它们在 `hashline`、`bash` 或 `snap` 工具被调用时才用到。Agent 的大部分时间都花在 LLM 流式输出上（受网络限制）,所以 Rust 的提速主要针对 **延迟敏感型操作**（例如用户按下 Ctrl-C 时的响应）。
 
-## Building the crates
+## 构建 crate
 
 ```bash
-# Build all Rust crates
+# 构建所有 Rust crate
 cargo build --release --workspace
 
-# Build with the CI profile (faster, smaller)
+# 使用 CI profile 构建（更快、更小）
 cargo build --profile ci --workspace
 
-# Build a single crate
+# 构建单个 crate
 cargo build --release -p pi-iso
 
-# Run tests
+# 运行测试
 cargo test --workspace
 ```
 
-The output is at `target/release/libpi_*.so` (or `.dylib` / `.dll`). The `pi-natives` TypeScript package's build script copies these to `bin/<platform>-<arch>/`.
+输出位于 `target/release/libpi_*.so`（或 `.dylib` / `.dll`）。`pi-natives` TypeScript 包的构建脚本会将其拷贝到 `bin/<platform>-<arch>/`。
 
-## What's NOT in the Rust core
+## 哪些不在 Rust 核心中
 
-The team chose **not** to write Rust for:
+出于以下原因,团队选择 **不** 用 Rust 写:
 
-- **LLM HTTP clients** — npm SDKs are mature, the Rust ecosystem lags
-- **TUI** — terminal handling is OS-quirky; the JS ecosystem has 10+ years of edge cases
-- **Web UI** — React/Vite is JS-only
-- **OpenTelemetry** — the OTel SDK is npm-only
+- **LLM HTTP 客户端** —— npm SDK 已成熟,Rust 生态滞后
+- **TUI** —— 终端处理在 OS 上有各种怪癖;JS 生态已经积累 10+ 年的边缘场景
+- **Web UI** —— React/Vite 仅限 JS
+- **OpenTelemetry** —— OTel SDK 仅 npm
 
-The Rust crates are **focused**: AST, processes, filesystem. Everything else is TypeScript.
+Rust crate **专注** 于:AST、进程、文件系统。其他一切都是 TypeScript。
 
-## Next
+## 接下来
 
-- [pi-ai · 40+ Providers](/docs/02-pi-ai) — what the Rust core enables
-- [hashline](/docs/08-hashline) — built on `pi-ast`
-- [snapcompact](/docs/10-snapcompact) — built on `pi-iso`
-- [32 Built-in Tools](/docs/09-tools) — the consumers
+- [pi-ai · 40+ 提供方](/docs/02-pi-ai) —— Rust 核心解锁的能力
+- [hashline](/docs/08-hashline) —— 构建于 `pi-ast` 之上
+- [snapcompact](/docs/10-snapcompact) —— 构建于 `pi-iso` 之上
+- [32 个内置工具](/docs/09-tools) —— 消费者

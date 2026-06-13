@@ -1,10 +1,10 @@
-# 14 · collab-web — Collaborative Web UI
+# 14 · collab-web 协作式 Web UI
 
-`@oh-my-pi/collab-web` is oh-my-pi's **React 19 collaborative web UI**. A peer of the TUI, not a separate product. Multiple users can attach to the same `omp --collab` session and see the same messages, with the lead user's input being canonical.
+`@oh-my-pi/collab-web` 是 oh-my-pi 的 **React 19 协作式 Web UI**。它是 TUI 的对端，而非一个独立产品。多个用户可以附加到同一个 `omp --collab` 会话并看到同样的消息，主导用户（lead）的输入被视为权威。
 
-**Source:** `packages/collab-web/src/` (40+ files: app, components, lib, tool-render, etc.)
+**源码：** `packages/collab-web/src/`（40+ 个文件：app、components、lib、tool-render 等）
 
-## What is collab-web
+## collab-web 是什么
 
 ```mermaid
 flowchart LR
@@ -21,89 +21,89 @@ flowchart LR
   U3 <-->|WS protobuf| OMP
 ```
 
-- **Multi-user** — multiple users see the same session
-- **Real-time** — events stream over WebSocket
-- **Collaborative** — one user is the "lead" (their input is canonical)
-- **Watch-only** — non-lead users can watch + suggest, not control
+- **多用户** — 多个用户看到同一个会话
+- **实时** — 事件通过 WebSocket 流式推送
+- **协作式** — 一名用户是"lead"（其输入为权威）
+- **只读** — 非 lead 用户可以观看 + 建议，但不能控制
 
-The web is a **peer** of the TUI — both can be active simultaneously. The lead user can be in the TUI; other users in the browser.
+Web 是 TUI 的 **对端** —— 两者可以同时激活。lead 用户可以在 TUI 里，其他用户在浏览器里。
 
-## Tech stack
+## 技术栈
 
-| Layer | Tech | Version |
+| 层 | 技术 | 版本 |
 |------|------|---------|
 | Framework | React | 19.2.x |
 | Build | Vite | 6.x |
 | CSS | Tailwind CSS | 4.3.0 |
-| State | Zustand | 5.x |
-| Terminal | xterm | 5.5.x |
-| Wire format | protobuf | via @bufbuild/protobuf |
-| Persistence | IndexedDB | via `idb` 8.x |
-| Icons | lucide-react | 0.4xx |
-| Routing | TanStack Router | 1.x |
+| 状态 | Zustand | 5.x |
+| 终端 | xterm | 5.5.x |
+| 线协议格式 | protobuf | via @bufbuild/protobuf |
+| 持久化 | IndexedDB | via `idb` 8.x |
+| 图标 | lucide-react | 0.4xx |
+| 路由 | TanStack Router | 1.x |
 
-## The 5 views
+## 5 个视图
 
 ```mermaid
 graph TB
-  App[App] --> Chat[Chat<br/>main message view]
-  App --> TUIView[TUI View<br/>embedded terminal]
-  App --> Tools[Tools<br/>tool call history]
-  App --> Files[Files<br/>file browser]
-  App --> Settings[Settings<br/>config UI]
+  App[App] --> Chat[Chat<br/>主消息视图]
+  App --> TUIView[TUI View<br/>嵌入式终端]
+  App --> Tools[Tools<br/>工具调用历史]
+  App --> Files[Files<br/>文件浏览器]
+  App --> Settings[Settings<br/>配置 UI]
 ```
 
-| View | Purpose | Default? |
+| 视图 | 用途 | 默认？ |
 |------|---------|----------|
-| **Chat** | The main message stream | ✓ |
-| **TUI View** | Embedded `xterm` showing the same TUI as the CLI | ✗ (toggle) |
-| **Tools** | List of all tool calls, expandable to show input/output | ✗ (sidebar) |
-| **Files** | Tree view of the project, click to open in a viewer | ✗ (sidebar) |
-| **Settings** | Provider, model, theme, keybindings, etc. | ✗ (modal) |
+| **Chat** | 主消息流 | ✓ |
+| **TUI View** | 嵌入式 `xterm`，展示与 CLI 相同的 TUI | ✗（可切换） |
+| **Tools** | 所有工具调用列表，可展开查看输入/输出 | ✗（侧边栏） |
+| **Files** | 项目树视图，点击在查看器中打开 | ✗（侧边栏） |
+| **Settings** | 提供方、模型、主题、按键绑定等 | ✗（模态框） |
 
-## The Chat view
+## Chat 视图
 
 ```mermaid
 graph TB
   Chat[Chat View]
-  Chat --> MessageList[Message List<br/>virtualized]
-  Chat --> Input[Message Input<br/>textarea + submit]
-  Chat --> Suggestions[Suggestion Bar<br/>3 quick actions]
-  
+  Chat --> MessageList[Message List<br/>虚拟化]
+  Chat --> Input[Message Input<br/>textarea + 提交]
+  Chat --> Suggestions[Suggestion Bar<br/>3 个快捷动作]
+
   MessageList --> UserMsg[User Message]
-  MessageList --> AssistantMsg[Assistant Message<br/>with streaming]
+  MessageList --> AssistantMsg[Assistant Message<br/>支持流式]
   MessageList --> ToolCall[Tool Call Card]
   MessageList --> ToolResult[Tool Result Card]
   MessageList --> Compact[Compaction Summary]
 ```
 
-The chat view is **virtualized** — only the visible messages are rendered. With 1000+ messages in a session, this keeps the UI smooth.
+Chat 视图是 **虚拟化** 的 —— 只渲染可见的消息。当会话中有 1000+ 条消息时，这能保证 UI 流畅。
 
-### Streaming
+### 流式输出
 
-The assistant's text streams in real time (just like the TUI):
+助手的文本实时流入（与 TUI 一样）：
 
 ```tsx
 function AssistantMessage({ message }: { message: AssistantMessage }) {
   return (
     <div className="message assistant">
-      <Markdown content={message.text} />  {/* Streaming text */}
+      <Markdown content={message.text} />  {/* 流式文本 */}
       {message.isStreaming && <span className="cursor">▌</span>}
     </div>
   );
 }
 ```
 
-The cursor is a blinking block (using CSS animation) that disappears when streaming stops.
+光标是一个闪烁的方块（使用 CSS 动画），流式停止时消失。
 
-### Tool call cards
+### 工具调用卡片
 
-Each tool call is a **collapsible card**:
+每个工具调用是一张 **可折叠的卡片**：
 
 ```tsx
 function ToolCallCard({ call, result }: { call: ToolCall; result?: ToolResult }) {
   const [expanded, setExpanded] = useState(false);
-  
+
   return (
     <div className="tool-card">
       <button onClick={() => setExpanded(!expanded)}>
@@ -118,21 +118,21 @@ function ToolCallCard({ call, result }: { call: ToolCall; result?: ToolResult })
 }
 ```
 
-The card shows:
+卡片显示：
 
-- **Tool name** + abbreviated args
-- **Duration** (when result arrives)
-- **Success/failure** icon
-- **Expand** to see full input/output
+- **工具名称** + 缩写后的参数
+- **耗时**（结果到达时）
+- **成功/失败** 图标
+- **展开** 以查看完整输入/输出
 
-### The 32 tool renderers
+### 32 个工具渲染器
 
-`packages/collab-web/src/tool-render/` has **one custom renderer per tool** (or tool family):
+`packages/collab-web/src/tool-render/` 为每个工具（或工具族）提供一个 **自定义渲染器**：
 
 ```tsx
 // tool-render/hashline.tsx
 export function HashlineRenderer({ call, result }: ToolRenderProps) {
-  // Render the hashline output as a code block with line numbers
+  // 将 hashline 输出渲染为带行号的代码块
   return (
     <CodeBlock
       content={result?.content ?? ''}
@@ -144,7 +144,7 @@ export function HashlineRenderer({ call, result }: ToolRenderProps) {
 
 // tool-render/lsp_hover.tsx
 export function LspHoverRenderer({ call, result }: ToolRenderProps) {
-  // Render hover as a doc card
+  // 将 hover 渲染为文档卡片
   return (
     <DocCard
       type={extractType(result)}
@@ -154,11 +154,11 @@ export function LspHoverRenderer({ call, result }: ToolRenderProps) {
 }
 ```
 
-The 32 renderers are specialized for their tool type, but share common primitives (CodeBlock, DocCard, DiffViewer, etc.).
+32 个渲染器各自针对工具类型做了特化，但共享通用原语（CodeBlock、DocCard、DiffViewer 等）。
 
-## The TUI view
+## TUI 视图
 
-A toggleable embedded terminal that shows the same TUI the CLI user sees:
+一个可切换的嵌入式终端，展示 CLI 用户看到的同一份 TUI：
 
 ```tsx
 import { Terminal } from '@xterm/xterm';
@@ -168,7 +168,7 @@ function TuiView({ sessionId }: { sessionId: string }) {
     sessionId,
     transport: 'websocket'
   });
-  
+
   return (
     <div className="tui-view">
       <Terminal {...terminal} />
@@ -177,16 +177,16 @@ function TuiView({ sessionId }: { sessionId: string }) {
 }
 ```
 
-The `Terminal` is **bidirectional** — what the user types is sent to the server, what the server renders is displayed. The lead user can switch between TUI and Chat seamlessly.
+`Terminal` 是 **双向的** —— 用户输入会发送到服务端，服务端渲染的内容会展示出来。lead 用户可以在 TUI 和 Chat 之间无缝切换。
 
-## The Files view
+## Files 视图
 
-A tree view of the project, with click-to-view:
+项目的树视图，点击查看：
 
 ```tsx
 function FilesView({ projectId }: { projectId: string }) {
   const { tree } = useProjectTree(projectId);
-  
+
   return (
     <Tree
       data={tree}
@@ -201,21 +201,21 @@ function FilesView({ projectId }: { projectId: string }) {
 }
 ```
 
-Clicking a file opens a viewer (read-only by default; the user has to go to the chat to edit). Supports:
+点击文件会在查看器中打开（默认只读；用户需要到 Chat 中才能编辑）。支持：
 
-- **Syntax highlighting** (Monaco editor in read-only mode)
-- **Diff view** (before/after a session change)
-- **Search** (full-text within the project)
+- **语法高亮**（Monaco 编辑器的只读模式）
+- **差异视图**（会话变更前/后对比）
+- **搜索**（项目内全文）
 
-## The Tools view
+## Tools 视图
 
-A list of all tool calls in the session, with filters:
+会话中所有工具调用的列表，带过滤：
 
 ```tsx
 function ToolsView({ sessionId }: { sessionId: string }) {
   const { toolCalls } = useToolCalls(sessionId);
   const [filter, setFilter] = useState<'all' | 'success' | 'error'>('all');
-  
+
   return (
     <div>
       <Filter value={filter} onChange={setFilter} />
@@ -228,11 +228,11 @@ function ToolsView({ sessionId }: { sessionId: string }) {
 }
 ```
 
-Useful for "what did the agent actually do?" — shows every tool call with timing, success, and details.
+用于回答"Agent 究竟做了哪些操作"，展示每次工具调用及其耗时、成功情况和详情。
 
-## The Settings view
+## Settings 视图
 
-A modal for editing the session/agent config:
+用于编辑会话 / Agent 配置的模态框：
 
 ```tsx
 function SettingsView() {
@@ -263,39 +263,39 @@ function SettingsView() {
 }
 ```
 
-Each tab is a form for the corresponding config section. Changes are applied immediately and saved to the user's `~/.omp/settings.json`.
+每个标签页是相应配置区的表单。变更会立即生效，并保存到用户的 `~/.omp/settings.json`。
 
-## The role system
+## 角色系统
 
 ```mermaid
 stateDiagram-v2
   [*] --> Viewer
-  Viewer --> Editor: promoted by lead
-  Editor --> Viewer: demoted by lead
-  Viewer --> [*]: leave
-  Editor --> [*]: leave
+  Viewer --> Editor: 由 lead 提升
+  Editor --> Viewer: 由 lead 降级
+  Viewer --> [*]: 离开
+  Editor --> [*]: 离开
 ```
 
-Each user has a **role**:
+每个用户都有一个 **角色**：
 
-- **Lead** — their input is canonical (one lead per session)
-- **Editor** — can send user messages, but the lead's input is canonical
-- **Viewer** — can watch and suggest, but cannot send user messages
+- **Lead** — 其输入为权威（每个会话只有一名 lead）
+- **Editor** — 可以发送用户消息，但 lead 的输入为权威
+- **Viewer** — 可以观看和提议，但不能发送用户消息
 
-The lead can promote/demote other users. On lead departure, an editor is auto-promoted (or the session is paused if no editors).
+Lead 可以提升 / 降级其他用户。当 lead 离开时，一名 editor 会被自动提升（如果没有 editor 则会话暂停）。
 
-## The persistence
+## 持久化
 
-The collab-web uses **IndexedDB** (via `idb`) for client-side persistence:
+collab-web 使用 **IndexedDB**（通过 `idb`）进行客户端持久化：
 
-- **Session metadata** — name, lead user, role, etc.
-- **Recent messages** — for quick re-join
-- **Draft user messages** — restore unsent input on reload
-- **Theme preference** — last selected theme
+- **会话元数据** — 名称、lead 用户、角色等
+- **最近消息** — 用于快速重新加入
+- **草稿用户消息** — 在重新加载时恢复未发送的输入
+- **主题偏好** — 最近选择的主题
 
-The actual session data lives on the server (`omp --collab`); the browser only caches metadata.
+实际的会话数据存放在服务端（`omp --collab`）；浏览器只缓存元数据。
 
-## The lead's input priority
+## Lead 的输入优先级
 
 ```mermaid
 sequenceDiagram
@@ -310,14 +310,14 @@ sequenceDiagram
     Note over Server: queue: [Lead, Editor1]
     Editor2->>Server: "+1 to refactor"
     Note over Server: queue: [Lead, Editor1, Editor2]
-    Note over Server: The lead's message is processed first
+    Note over Server: Lead 的消息被优先处理
 ```
 
-The server **prioritizes the lead's messages**. Editor messages are processed in order after the lead's, but the lead can interject at any time.
+服务端 **优先处理 lead 的消息**。Editor 的消息按顺序在 lead 之后处理，但 lead 可以在任意时刻打断。
 
-## The protobuf schema (browser side)
+## protobuf schema（浏览器侧）
 
-The browser uses the same `.proto` file as the server:
+浏览器使用与服务端相同的 `.proto` 文件：
 
 ```ts
 // packages/collab-web/src/lib/wire.ts
@@ -333,17 +333,17 @@ const bytes = toBinary(EnvelopeSchema, env);
 ws.send(bytes);
 ```
 
-Auto-generated from the same `.proto` as `pi-wire`. The browser and server share the schema.
+由与 `pi-wire` 相同的 `.proto` 自动生成。浏览器与服务端共用同一份 schema。
 
-## The WebSocket transport
+## WebSocket 传输层
 
-`packages/collab-web/src/lib/transport.ts`:
+`packages/collab-web/src/lib/transport.ts`：
 
 ```ts
 export class WebSocketTransport {
   private ws: WebSocket;
   private handlers: Set<(env: Envelope) => void> = new Set();
-  
+
   constructor(url: string) {
     this.ws = new WebSocket(url);
     this.ws.binaryType = "arraybuffer";
@@ -352,20 +352,20 @@ export class WebSocketTransport {
       this.handlers.forEach(h => h(env));
     };
   }
-  
+
   send(env: Envelope) {
     this.ws.send(toBinary(EnvelopeSchema, env));
   }
-  
+
   on(handler: (env: Envelope) => void) {
     this.handlers.add(handler);
   }
 }
 ```
 
-The transport is **binary** (protobuf over WebSocket), not text. This is faster and uses less bandwidth.
+传输层是 **二进制**（protobuf over WebSocket），而非文本。速度更快，使用的带宽也更少。
 
-## The collaboration protocol
+## 协作协议
 
 ```mermaid
 sequenceDiagram
@@ -377,28 +377,28 @@ sequenceDiagram
     Lead->>Server: SessionStart { lead: "alice" }
     Server->>Viewer1: SessionStart { lead: "alice" }
     Server->>Viewer2: SessionStart { lead: "alice" }
-    
+
     Server->>Lead: UserJoined { user: "bob", role: "viewer" }
     Server->>Viewer1: UserJoined { user: "bob", role: "viewer" }
     Server->>Viewer2: UserJoined { user: "bob", role: "viewer" }
-    
+
     Lead->>Server: UserMessage { text: "Refactor foo.ts" }
     Server->>Lead: AgentEvent { text_delta: "Sure, I'll..." }
     Server->>Viewer1: AgentEvent { text_delta: "Sure, I'll..." }
     Server->>Viewer2: AgentEvent { text_delta: "Sure, I'll..." }
-    
+
     Viewer1->>Server: Suggestion { text: "What about bar.ts?" }
     Server->>Lead: Suggestion { from: "bob", text: "What about bar.ts?" }
     Lead->>Server: ApproveSuggestion { id: 1 }
     Server->>Viewer1: SuggestionApproved
-    Note over Server: Suggestion becomes part of the next turn
+    Note over Server: 建议会被注入到下一轮
 ```
 
-The lead sees suggestions as inline banners. They can **approve** (injected into the next turn) or **dismiss** (gone forever).
+Lead 看到的建议以行内横幅展示。他们可以 **批准**（注入到下一轮）或 **驳回**（永久消失）。
 
-## The theme system
+## 主题系统
 
-Same as the TUI — themes are JSON files at `~/.omp/themes/*.json`:
+与 TUI 相同 —— 主题是位于 `~/.omp/themes/*.json` 的 JSON 文件：
 
 ```json
 {
@@ -418,39 +418,39 @@ Same as the TUI — themes are JSON files at `~/.omp/themes/*.json`:
 }
 ```
 
-The collab-web watches the theme files (via Server-Sent Events) and hot-reloads on change. Same theme as the TUI for consistency.
+collab-web 通过 Server-Sent Events 监听主题文件，并在变更时热重载。与 TUI 使用相同主题，保证一致性。
 
-## The mobile experience
+## 移动端体验
 
-The collab-web is **mobile-friendly**:
+collab-web 对 **移动端友好**：
 
-- Touch-friendly button sizes
-- Swipe to navigate between views
-- Pinch-to-zoom in the TUI view
-- iOS / Android browser support (Safari, Chrome)
+- 触控友好的按钮尺寸
+- 视图间可滑动切换
+- TUI 视图中可双指缩放
+- 支持 iOS / Android 浏览器（Safari、Chrome）
 
-The TUI view is **scaled** to fit the screen — the user can pinch-to-zoom to read small text.
+TUI 视图会被 **缩放** 以适配屏幕 —— 用户可以双指缩放以阅读小字。
 
-## The build
+## 构建
 
 ```bash
 cd packages/collab-web
 bun run build
-# → dist/ (static SPA)
+# → dist/（静态 SPA）
 ```
 
-The output is a static SPA. The `omp --collab` server serves it on the same port as the WebSocket (31415 by default).
+输出是一个静态 SPA。`omp --collab` 服务端会在与 WebSocket 相同的端口（默认 31415）提供它。
 
-## What collab-web is NOT
+## collab-web 不是什么
 
-- **A standalone product** — it requires `omp --collab` to be running
-- **A Slack replacement** — the focus is on the agent, not chat
-- **A VS Code replacement** — for editing, you still use your editor (the agent edits files)
-- **A cloud service** — runs locally, no data leaves the host
+- **独立产品** — 它需要 `omp --collab` 在运行
+- **Slack 的替代品** — 关注的是 Agent，而非聊天
+- **VS Code 的替代品** — 编辑仍需使用你自己的编辑器（由 Agent 编辑文件）
+- **云服务** — 本地运行，数据不离开本机
 
-## Next
+## 下一篇
 
-- [pi-wire](/docs/12-pi-wire) — the protocol
-- [pi-tui](/docs/13-pi-tui) — the TUI peer
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — the `--collab` mode
-- [omp-stats](/docs/15-omp-stats) — telemetry
+- [pi-wire](/docs/12-pi-wire) — 协议
+- [pi-tui](/docs/13-pi-tui) — TUI 对端
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — `--collab` 模式
+- [omp-stats](/docs/15-omp-stats) — 遥测

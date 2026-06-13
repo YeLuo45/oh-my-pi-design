@@ -1,100 +1,100 @@
-# 13 · pi-tui — Terminal UI Library
+# 13 · pi-tui 终端 UI 库
 
-`@oh-my-pi/pi-tui` is the **differential-rendering terminal UI library** that powers `omp`. Forked from pi-mono's `pi-tui` and extended with **bracketed paste support**, **deccara** (advanced cursor movement), and **better completion engine**.
+`@oh-my-pi/pi-tui` 是驱动 `omp` 的 **差分渲染终端 UI 库**。Fork 自 pi-mono 的 `pi-tui`，并扩展了 **bracketed paste 支持**、**deccara**（高级光标移动）以及 **更好的补全引擎**。
 
-**Source:** `packages/tui/src/` (12 components, 4 input subsystems, 0 runtime deps on the agent)
+**源码：** `packages/tui/src/`（12 个组件、4 个输入子系统、对 Agent 运行时零依赖）
 
-## What changed from pi-mono
+## 与 pi-mono 相比的变化
 
-| Aspect | pi-mono | oh-my-pi |
+| 维度 | pi-mono | oh-my-pi |
 |--------|---------|----------|
-| Differential rendering | ✓ | ✓ (same) |
-| 12 components | ✓ | ✓ (same) |
+| 差分渲染 | ✓ | ✓（相同） |
+| 12 个组件 | ✓ | ✓（相同） |
 | Bracketed paste | ✗ | **✓** |
-| Deccara cursor movement | ✗ | **✓** |
-| In-place completion | basic | **fuzzy + LLM** |
-| Image rendering | Sixel/Kitty/iTerm2 | Same + **webp + animated** |
-| Theme hot-reload | ✗ | **✓** |
-| 60fps animation | ✓ (most cases) | ✓ (all cases) |
-| Native key parser | win32/darwin prebuilds | Same + **linux prebuild** |
+| Deccara 光标移动 | ✗ | **✓** |
+| 原地补全 | 基础 | **模糊 + LLM** |
+| 图像渲染 | Sixel/Kitty/iTerm2 | 相同 + **webp + 动画** |
+| 主题热重载 | ✗ | **✓** |
+| 60fps 动画 | ✓（多数情况） | ✓（所有情况） |
+| 原生键解析器 | win32/darwin 预编译 | 相同 + **linux 预编译** |
 
-The 5 new features:
+5 项新功能：
 
-1. **Bracketed paste** — large pastes don't trigger keystroke-by-keystroke processing
-2. **Deccara** — DECCARA (DEC Cursor Attribute) for advanced cursor styling
-3. **Fuzzy + LLM completion** — the completion engine can use the LLM for suggestions
-4. **Animated images** — webp and animated PNGs in the `Image` component
-5. **Theme hot-reload** — change theme without restarting the TUI
+1. **Bracketed paste** — 大块粘贴不会触发逐按键处理
+2. **Deccara** — DECCARA（DEC Cursor Attribute）用于高级光标样式
+3. **模糊 + LLM 补全** — 补全引擎可以调用 LLM 生成建议
+4. **动画图像** — `Image` 组件支持 webp 和动画 PNG
+5. **主题热重载** — 无需重启 TUI 即可切换主题
 
-## The 12 components
+## 12 个组件
 
 ```mermaid
 graph TB
-  Box[Box<br/>flexible container]
-  Text[Text<br/>1 line + style]
-  Spacer[Spacer<br/>empty grow]
-  TruncatedText[TruncatedText<br/>with truncation marker]
-  Editor[Editor<br/>multi-line text input]
-  Input[Input<br/>single-line input]
-  SelectList[SelectList<br/>filterable + fuzzy]
-  SettingsList[SettingsList<br/>typed form]
-  Markdown[Markdown<br/>via marked]
+  Box[Box<br/>弹性容器]
+  Text[Text<br/>单行 + 样式]
+  Spacer[Spacer<br/>空白弹性]
+  TruncatedText[TruncatedText<br/>带截断标记]
+  Editor[Editor<br/>多行文本输入]
+  Input[Input<br/>单行输入]
+  SelectList[SelectList<br/>可过滤 + 模糊]
+  SettingsList[SettingsList<br/>类型化表单]
+  Markdown[Markdown<br/>通过 marked]
   Image[Image<br/>Sixel/Kitty/iTerm2/webp]
-  Loader[Loader<br/>spinner]
-  CancellableLoader[CancellableLoader<br/>with progress]
+  Loader[Loader<br/>旋转动画]
+  CancellableLoader[CancellableLoader<br/>带进度]
 ```
 
-Same as pi-mono. See the algorithm section below for details.
+与 pi-mono 相同。算法细节参见下文的差分渲染小节。
 
-The extensions:
+扩展点：
 
-- **`Image`** — now supports webp and animated formats
-- **`Markdown`** — now supports Mermaid diagrams (rendered to ASCII)
-- **`Editor`** — now supports **multiline indentation** (tab/shift-tab)
-- **`SettingsList`** — now supports **validation** (regex, custom fn)
+- **`Image`** — 新增 webp 和动画格式支持
+- **`Markdown`** — 新增 Mermaid 图支持（渲染为 ASCII）
+- **`Editor`** — 新增 **多行缩进** 支持（Tab / Shift-Tab）
+- **`SettingsList`** — 新增 **校验** 支持（正则、自定义函数）
 
-## The `Editor` component (extended)
+## `Editor` 组件（已扩展）
 
-The most-used component. New features:
+最常用的组件。新特性：
 
 ```ts
 const editor = new Editor({
-  // Existing options
+  // 既有选项
   initialValue: "",
   onSubmit: (value) => { ... },
   onChange: (value) => { ... },
-  
-  // New in oh-my-pi
+
+  // oh-my-pi 新增
   onPaste: (text) => { ... },                    // bracketed paste
-  onCompletion: async (prefix) => { ... },      // async completion
-  completionProvider: new FuzzyCompletion(),    // or LLMCompletion
+  onCompletion: async (prefix) => { ... },      // 异步补全
+  completionProvider: new FuzzyCompletion(),    // 或 LLMCompletion
   multiline: true,
   tabSize: 2,
   syntaxHighlight: "markdown"                    // "markdown" | "ts" | "json" | "none"
 });
 ```
 
-The `completionProvider` is the new bit — it can be:
+`completionProvider` 是新部分，它可以是：
 
-- **`FuzzyCompletion`** — uses `fuzzy.ts` for in-memory matching
-- **`LLMCompletion`** — calls the LLM for completions (e.g. for code)
-- **`FileCompletion`** — completes file paths (uses `glob` tool)
-- **`Custom`** — bring your own
+- **`FuzzyCompletion`** — 使用 `fuzzy.ts` 进行内存中的模糊匹配
+- **`LLMCompletion`** — 调用 LLM 生成补全（例如代码补全）
+- **`FileCompletion`** — 补全文件路径（使用 `glob` 工具）
+- **`Custom`** — 自定义
 
-The `LLMCompletion` provider is the most novel:
+`LLMCompletion` 提供方是最具创意的：
 
 ```ts
 const llmCompletion = new LLMCompletion({
   model: claudeOpusModel,
-  context: editor.getContext(),  // last 50 lines as context
-  debounceMs: 300,                // don't spam the LLM
+  context: editor.getContext(),  // 最近 50 行作为上下文
+  debounceMs: 300,                // 避免向 LLM 频繁请求
   maxSuggestions: 5
 });
 
 editor.setCompletionProvider(llmCompletion);
 ```
 
-When the user types `fun greet(name:`, the editor shows:
+当用户键入 `fun greet(name:`，编辑器会显示：
 
 ```
 fun greet(name: string): string {
@@ -102,9 +102,9 @@ fun greet(name: string): string {
 }
 ```
 
-Generated by the LLM in ~200ms. The user accepts with `Tab`.
+由 LLM 在约 200ms 内生成。用户用 `Tab` 接受。
 
-## The `Markdown` component (extended)
+## `Markdown` 组件（已扩展）
 
 ```ts
 const md = new Markdown({
@@ -115,9 +115,9 @@ const md = new Markdown({
 });
 ```
 
-The Mermaid renderer converts Mermaid diagrams to ASCII art (using box-drawing characters) for terminal display. The renderer is **streaming** — long diagrams render incrementally.
+Mermaid 渲染器会把 Mermaid 图转换为 ASCII 艺术（使用方框线字符）以便在终端中展示。渲染器是 **流式的** —— 长图可增量渲染。
 
-## The `Image` component (extended)
+## `Image` 组件（已扩展）
 
 ```ts
 const image = new Image({
@@ -125,21 +125,21 @@ const image = new Image({
   protocol: "auto",              // "auto" | "sixel" | "kitty" | "iterm2" | "fallback"
   maxWidth: 40,                  // cells
   maxHeight: 20,                 // cells
-  animated: true,                // webp / animated PNG
-  protocolHint: "kitty"          // override auto-detect
+  animated: true,                // webp / 动画 PNG
+  protocolHint: "kitty"          // 覆盖自动检测
 });
 ```
 
-The `protocol: "auto"` mode probes the terminal:
+`protocol: "auto"` 模式会探测终端：
 
-1. **Kitty** — query for ` kitty`; if response, use Kitty graphics protocol
-2. **Sixel** — query for `\`..\`..`; if response, use Sixel
-3. **iTerm2** — query for `OSC 1337`; if response, use iTerm2
-4. **Fallback** — render a placeholder (e.g. "🖼️" emoji + dimensions)
+1. **Kitty** — 发送 ` kitty` 查询；若有响应则使用 Kitty 图形协议
+2. **Sixel** — 发送 `\`..\`..` 查询；若有响应则使用 Sixel
+3. **iTerm2** — 发送 `OSC 1337` 查询；若有响应则使用 iTerm2
+4. **回退** — 渲染占位符（例如 🖼️ emoji + 尺寸信息）
 
-The auto-detection runs once per session and is cached.
+自动检测每个会话运行一次，并缓存结果。
 
-## The `SelectList` component (extended)
+## `SelectList` 组件（已扩展）
 
 ```ts
 const list = new SelectList({
@@ -147,60 +147,60 @@ const list = new SelectList({
   renderItem: (p) => `${p.name} (${p.id})`,
   filter: "fuzzy",                // "fuzzy" | "exact" | "regex" | "none"
   onSelect: (p) => { ... },
-  onFilter: (query) => { ... },   // custom filter
+  onFilter: (query) => { ... },   // 自定义过滤
   multiselect: false,
   showCount: true,
   pageSize: 10
 });
 ```
 
-The `onFilter` callback lets you implement custom filtering (e.g. for providers, fetch from the API on each keystroke).
+`onFilter` 回调让你可以实现自定义过滤（例如提供方列表，每个按键都从 API 拉取）。
 
-## Differential rendering (same as pi-mono)
+## 差分渲染（与 pi-mono 相同）
 
-The diff engine is the same — walks both buffers cell-by-cell, emits only changed cells. See the algorithm section below.
+差分引擎与 pi-mono 相同 —— 逐 cell 比较新旧缓冲区，只发出发生变化的 cell。算法细节参见下文小节。
 
-The oh-my-pi extension is **60fps animation** — the diff engine can handle 60 full-screen redraws per second without dropping frames. Used for:
+oh-my-pi 的扩展是 **60fps 动画** —— 差分引擎可以每秒处理 60 次全屏重绘而不掉帧。用于：
 
-- Animated spinners
-- Progress bars
-- Real-time token streaming
-- Typing indicators
+- 动画旋转图标
+- 进度条
+- 实时 token 流
+- 打字指示器
 
 ## Bracketed paste
 
-When the user pastes a large block of text, the terminal sends it as a single "bracketed paste" event (wrapped in `\x1b[200~...\x1b[201~`). Without handling, the editor would process each character as a keystroke — slow and broken.
+当用户粘贴大块文本时，终端会将其作为一个 "bracketed paste" 事件发出（包裹在 `\x1b[200~...\x1b[201~` 中）。如果不处理，编辑器会逐字符当作按键处理 —— 又慢又容易出错。
 
-`packages/tui/src/bracketed-paste.ts`:
+`packages/tui/src/bracketed-paste.ts`：
 
 ```ts
 export class BracketedPasteHandler {
   private buffer: string = "";
   private inPaste: boolean = false;
-  
+
   process(input: string, onPaste: (text: string) => void, onKey: (key: Key) => void): void {
-    // ... parse ESC[200~ ... ESC[201~ as a single paste
-    // ... process other input as keystrokes
+    // ... 解析 ESC[200~ ... ESC[201~ 为一次粘贴
+    // ... 其他输入按按键处理
   }
 }
 ```
 
-The editor uses this to:
+编辑器使用它来：
 
-1. Detect bracketed paste
-2. Buffer the content
-3. Call `onPaste(text)` with the full text
-4. Skip keystroke processing for the duration
+1. 检测 bracketed paste
+2. 缓存粘贴内容
+3. 以完整文本调用 `onPaste(text)`
+4. 在粘贴期间跳过按键处理
 
-For a 10k-character paste, this is the difference between **100ms** (bracketed) and **5 seconds** (keystroke-by-keystroke).
+对于 1 万字符的粘贴，bracketed paste **约 100ms**，而逐按键处理则需要 **5 秒**。
 
 ## Deccara
 
-`packages/tui/src/deccara.ts` is an extension of DECCARA (DEC Cursor Attribute) for advanced cursor styling:
+`packages/tui/src/deccara.ts` 是对 DECCARA（DEC Cursor Attribute）的扩展，用于高级光标样式：
 
 ```ts
 export class Deccara {
-  // Set cursor shape, color, blink
+  // 设置光标形状、颜色、闪烁
   setShape(shape: "block" | "underline" | "bar"): void;
   setColor(color: Color): void;
   setBlink(blink: boolean): void;
@@ -208,63 +208,63 @@ export class Deccara {
 }
 ```
 
-Used by the `Editor` to show a different cursor in different contexts:
+`Editor` 使用它在不同的上下文里展示不同的光标：
 
-- Normal mode: `block` cursor
-- Insert mode: `bar` cursor
-- Visual mode: `underline` cursor
-- During completion: `block` + dim color
+- 普通模式：`block` 光标
+- 插入模式：`bar` 光标
+- 可视模式：`underline` 光标
+- 补全展示中：`block` + 暗色
 
-## Theme hot-reload
+## 主题热重载
 
-`packages/tui/src/themes.ts`:
+`packages/tui/src/themes.ts`：
 
 ```ts
-const theme = await loadTheme("dark");  // or "light", "sepia", "nord", "solarized"
+const theme = await loadTheme("dark");  // 或 "light"、"sepia"、"nord"、"solarized"
 applyTheme(theme);
 
-// Hot-reload on file change
+// 文件变更时热重载
 themeWatcher.on("change", async (path) => {
   const newTheme = await loadTheme(path);
   applyTheme(newTheme);
 });
 ```
 
-The TUI watches `~/.omp/themes/*.json` and reloads the theme on change. The user can edit their theme in a separate editor and see the change live.
+TUI 会监听 `~/.omp/themes/*.json`，主题变化时重新加载。用户可以在另一个编辑器中编辑自己的主题，并实时看到变更。
 
-## The keybindings
+## 按键绑定
 
-Same keybinding system as pi-mono, with 3 new bindings:
+与 pi-mono 相同的按键绑定系统，新增 3 个绑定：
 
-| Key | Action | New? |
+| 按键 | 动作 | 新增？ |
 |-----|--------|------|
-| `Ctrl-V` | Paste from clipboard | **new** |
-| `Ctrl-Shift-V` | Paste with formatting | **new** |
-| `Tab` | Accept LLM completion | **new** (when LLMCompletion is active) |
-| `Shift-Tab` | Previous completion | **new** |
+| `Ctrl-V` | 从剪贴板粘贴 | **新增** |
+| `Ctrl-Shift-V` | 带格式粘贴 | **新增** |
+| `Tab` | 接受 LLM 补全 | **新增**（当 LLMCompletion 激活时） |
+| `Shift-Tab` | 上一个补全 | **新增** |
 
-The `Ctrl-V` / `Ctrl-Shift-V` use the OS clipboard (via `clipboardy` or `xclip` on Linux).
+`Ctrl-V` / `Ctrl-Shift-V` 使用操作系统剪贴板（Linux 下通过 `clipboardy` 或 `xclip`）。
 
-## The native modules
+## 原生模块
 
-`packages/tui/native/` ships prebuilt `.node` addons for:
+`packages/tui/native/` 为以下平台提供预编译的 `.node` 插件：
 
-- `win32-x64/prebuilds/*.node` — Windows key parsing
-- `darwin-arm64/prebuilds/*.node` — macOS key parsing
-- `darwin-x64/prebuilds/*.node` — macOS Intel key parsing
-- `linux-x64/prebuilds/*.node` — **NEW** — Linux key parsing
+- `win32-x64/prebuilds/*.node` — Windows 按键解析
+- `darwin-arm64/prebuilds/*.node` — macOS 按键解析
+- `darwin-x64/prebuilds/*.node` — macOS Intel 按键解析
+- `linux-x64/prebuilds/*.node` — **新增** — Linux 按键解析
 
-The Linux prebuild is new — pi-mono's tui didn't ship a Linux native module (used JS fallback). oh-my-pi has a Rust NAPI module for Linux key parsing that handles:
+Linux 预编译是新增的 —— pi-mono 的 tui 没有自带 Linux 原生模块（用的是 JS 回退）。oh-my-pi 提供一个 Rust NAPI 模块用于 Linux 按键解析，它能处理：
 
-- **Kitty keyboard protocol** — `\x1b[<u` for unambiguous key events
-- **Modifier parsing** — `Ctrl+Shift+Alt+Key`
-- **Function keys** — `F1`-`F12` correctly on all terminals
+- **Kitty 键盘协议** — `\x1b[<u` 提供无歧义的按键事件
+- **修饰键解析** — `Ctrl+Shift+Alt+Key`
+- **功能键** — 在所有终端上正确识别 `F1`-`F12`
 
-The native module is **optional** — the JS fallback is always available, just slower.
+原生模块是 **可选的** —— JS 回退始终可用，只是会慢一些。
 
-## The autocomplete engine
+## 自动补全引擎
 
-`packages/tui/src/autocomplete.ts` (extended):
+`packages/tui/src/autocomplete.ts`（已扩展）：
 
 ```ts
 export interface AutocompleteProvider {
@@ -279,18 +279,18 @@ export interface AutocompleteContext {
   // ...
 }
 
-// Built-in providers
+// 内置提供方
 export class FuzzyAutocompleteProvider implements AutocompleteProvider { ... }
 export class FileAutocompleteProvider implements AutocompleteProvider { ... }
 export class LlmAutocompleteProvider implements AutocompleteProvider { ... }
 export class CombinedAutocompleteProvider implements AutocompleteProvider { ... }
 ```
 
-The `CombinedAutocompleteProvider` chains multiple providers and dispatches by trigger (`/`, `@`, `$`, etc.).
+`CombinedAutocompleteProvider` 会把多个提供方串联起来，按触发符（`/`、`@`、`$` 等）分派。
 
-## The 5 line styles
+## 5 种边框样式
 
-The TUI has 5 line styles for borders:
+TUI 提供 5 种边框线样式：
 
 ```ts
 type BorderStyle = "single" | "double" | "rounded" | "heavy" | "ascii";
@@ -301,40 +301,40 @@ const box = new Box({
 });
 ```
 
-Rendered with Unicode box-drawing characters (or ASCII for `ascii` style, for terminals that don't support Unicode).
+使用 Unicode 方框线字符渲染（`ascii` 样式下则使用 ASCII 字符，用于不支持 Unicode 的终端）。
 
-## Performance
+## 性能
 
-- **Diff engine** — handles 60 full-screen redraws per second
-- **Bracketed paste** — 10k chars in 100ms
-- **LLM completion** — first suggestion in ~200ms (debounced)
-- **Theme hot-reload** — < 10ms (file watch + apply)
+- **差分引擎** — 每秒处理 60 次全屏重绘
+- **Bracketed paste** — 1 万字符 100ms
+- **LLM 补全** — 首条建议约 200ms（已防抖）
+- **主题热重载** — < 10ms（文件监听 + 应用）
 
-## The TUI's role in the architecture
+## TUI 在架构中的角色
 
 ```mermaid
 flowchart LR
-  Agent[AgentEvent stream] --> TUI[pi-tui]
-  TUI --> Render[Differential Renderer]
+  Agent[AgentEvent 流] --> TUI[pi-tui]
+  TUI --> Render[差分渲染器]
   Render --> Terminal[PTY]
   Terminal --> User
   User --> Input[Keyboard]
-  Input --> Parser[Native Key Parser]
+  Input --> Parser[原生键解析器]
   Parser --> TUI
-  TUI --> Agent[User message]
+  TUI --> Agent[用户消息]
 ```
 
-The TUI is **the** UI for the interactive mode. The collab-web (React 19) is a separate, parallel UI for the web. Both consume the same `AgentEvent` stream.
+TUI 是交互模式下 **唯一的** UI。collab-web（React 19）是一个独立、并行的 Web UI。两者消费同一个 `AgentEvent` 流。
 
-## What's NOT in pi-tui
+## pi-tui 中不包含的内容
 
-- **Mouse support** — terminals have inconsistent mouse handling; the agent doesn't need it
-- **True color animation** — supported, but rare
-- **Wayland-specific features** — works on Wayland through XWayland
-- **Touch input** — terminals don't have touch
+- **鼠标支持** — 终端的鼠标处理参差不齐；Agent 不需要它
+- **真彩色动画** — 已支持，但很少用到
+- **Wayland 专属特性** — 通过 XWayland 在 Wayland 上工作
+- **触控输入** — 终端没有触控
 
-## Next
+## 下一篇
 
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — the consumer
-- [collab-web](/docs/14-collab-web) — the web UI (peer of the TUI)
-- [Agent Loop](/docs/03-pi-agent-core) — the events the TUI renders
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — 使用方
+- [collab-web](/docs/14-collab-web) — Web UI（TUI 的对端）
+- [Agent Loop](/docs/03-pi-agent-core) — TUI 渲染的事件来源

@@ -1,84 +1,84 @@
-# 04 · pi-catalog — Model Identity & Compatibility
+# 04 · pi-catalog 模型身份管理
 
-`@oh-my-pi/pi-catalog` is the **centralized model metadata registry**. It owns the model catalog, capability flags, identity (stable IDs vs display names), effort levels, compat layer (legacy model ids), and discovery (live queries to providers).
+`@oh-my-pi/pi-catalog` 是**集中式模型元数据注册中心**。它持有模型目录、能力标志、身份（稳定 ID 与展示名）、努力等级、兼容层（旧模型 ID）以及发现机制（对提供方的实时查询）。
 
-**Source:** `packages/catalog/src/` (10+ files: build, compat/, discovery/, effort, identity/, hosts, etc.)
+**源码：** `packages/catalog/src/`（10+ 文件：build、compat/、discovery/、effort、identity/、hosts 等）
 
-## Why a separate package
+## 为什么要做成独立包
 
-In pi-mono, model metadata was inside `pi-ai/src/models.generated.ts` (17,159 lines, auto-generated). For oh-my-pi's 40+ providers × thousands of models, this would balloon to 100k+ lines. The team split it out into `pi-catalog` so:
+在 pi-mono 中，模型元数据放在 `pi-ai/src/models.generated.ts`（17,159 行，自动生成）。对于 oh-my-pi 的 40+ 提供方 × 数千个模型，这会膨胀到 10 万行以上。团队把它拆出来做成 `pi-catalog`，原因如下：
 
-1. The catalog can be **queried** at runtime (not just compiled in)
-2. The catalog can be **updated** without rebuilding `pi-ai`
-3. The catalog can be **extended** by extensions (custom providers)
-4. The catalog can be **versioned** independently
+1. 目录可以在**运行时被查询**（而不仅仅是编译进去）
+2. 目录可以在**不重新构建 `pi-ai`** 的情况下更新
+3. 目录可以**被扩展**（扩展可以加入自定义提供方）
+4. 目录可以**独立版本化**
 
-## The 4 sub-modules
+## 4 个子模块
 
 ```mermaid
 graph TB
   Catalog[pi-catalog]
-  Catalog --> Identity[identity/<br/>stable IDs]
-  Catalog --> Build[build.ts<br/>catalog generation]
-  Catalog --> Compat[compat/<br/>legacy IDs]
-  Catalog --> Discovery[discovery/<br/>runtime queries]
-  Catalog --> Effort[effort.ts<br/>reasoning levels]
-  Catalog --> Hosts[hosts.ts<br/>baseUrl registry]
-  Catalog --> Provider[provider-details.ts<br/>per-provider config]
-  Catalog --> FwModel[fireworks-model-id.ts<br/>special case]
-  Catalog --> Index[index.ts<br/>public API]
+  Catalog --> Identity[identity/<br/>稳定 ID]
+  Catalog --> Build[build.ts<br/>目录生成]
+  Catalog --> Compat[compat/<br/>旧 ID]
+  Catalog --> Discovery[discovery/<br/>运行时查询]
+  Catalog --> Effort[effort.ts<br/>推理等级]
+  Catalog --> Hosts[hosts.ts<br/>baseUrl 注册]
+  Catalog --> Provider[provider-details.ts<br/>按提供方的配置]
+  Catalog --> FwModel[fireworks-model-id.ts<br/>特殊情形]
+  Catalog --> Index[index.ts<br/>公共 API]
 ```
 
-## The 6 model fields
+## 6 个模型字段
 
-Every model in the catalog has 6 fields:
+目录中每个模型都有 6 个字段：
 
 ```ts
 export interface Model {
-  // 1. Identity
-  id: string;          // stable, e.g. "claude-opus-4-5"
-  name: string;        // display, e.g. "Claude Opus 4.5"
-  family: string;      // e.g. "claude-4"
-  provider: string;    // e.g. "anthropic"
-  api: Api;            // e.g. "anthropic-messages"
-  baseUrl?: string;    // override default
-  
-  // 2. Capability flags
+  // 1. 身份
+  id: string;          // 稳定 ID，例如 "claude-opus-4-5"
+  name: string;        // 展示名，例如 "Claude Opus 4.5"
+  family: string;      // 例如 "claude-4"
+  provider: string;    // 例如 "anthropic"
+  api: Api;            // 例如 "anthropic-messages"
+  baseUrl?: string;    // 覆盖默认地址
+
+  // 2. 能力标志
   capability: ModelCapability;
-  
-  // 3. Limits
+
+  // 3. 限制
   contextWindow: number;
   maxOutputTokens: number;
-  
-  // 4. Cost
+
+  // 4. 成本
   cost: ModelCost;
-  
-  // 5. Reasoning
+
+  // 5. 推理
   effortLevels?: EffortLevel[];
-  
-  // 6. Deprecation
+
+  // 6. 弃用
   deprecated?: {
-    since: string;            // ISO date
-    replacement?: string;     // new model id
-    sunset?: string;          // ISO date
+    since: string;            // ISO 日期
+    replacement?: string;     // 新模型 id
+    sunset?: string;          // ISO 日期
   };
 }
 ```
 
-The 6 fields answer:
+这 6 个字段分别回答：
 
-- **Who am I?** — `id`, `name`, `family`, `provider`, `api`
-- **What can I do?** — `capability`
-- **How much can I hold?** — `contextWindow`, `maxOutputTokens`
-- **How much does it cost?** — `cost`
-- **How hard should I think?** — `effortLevels`
-- **Am I dying?** — `deprecated`
+- **我是谁？** — `id`、`name`、`family`、`provider`、`api`
+- **我能做什么？** — `capability`
+- **我能容纳多少？** — `contextWindow`、`maxOutputTokens`
+- **我要花多少钱？** — `cost`
+- **我应该多努力思考？** — `effortLevels`
+- **我是不是要退役了？** — `deprecated`
 
-## The 24 capability flags
+## 24 个能力标志
 
 ```ts
 export interface ModelCapability {
-  // Tier 1: Modality
+  // 第 1 层：模态
   text: boolean;
   imageInput: boolean;
   imageOutput: boolean;
@@ -86,45 +86,45 @@ export interface ModelCapability {
   audioOutput: boolean;
   videoInput: boolean;
   videoOutput: boolean;
-  
-  // Tier 2: Agent features
+
+  // 第 2 层：Agent 特性
   toolUse: boolean;
   streaming: boolean;
   jsonMode: boolean;
   systemPrompt: boolean;
-  
-  // Tier 3: Reasoning
+
+  // 第 3 层：推理
   reasoning: boolean;
   thinking: { type: "enabled" | "adaptive"; budgetTokens: boolean };
   effortLevels: EffortLevel[];
-  
-  // Tier 4: Caching
+
+  // 第 4 层：缓存
   promptCaching: boolean;
   cacheRead: boolean;
   cacheWrite: boolean;
-  
-  // Tier 5: Search / retrieval
+
+  // 第 5 层：搜索 / 检索
   webSearch: boolean;
   citations: boolean;
   grounding: boolean;
-  
-  // Tier 6: Limits (data)
+
+  // 第 6 层：限制（数据）
   contextWindow: number;
   maxOutputTokens: number;
 }
 ```
 
-The agent reads these flags to:
+Agent 读取这些标志来：
 
-- Filter tools (no `read_image` if `!imageInput`)
-- Decide whether to enable thinking
-- Choose the right compaction strategy
-- Set the right `tool_choice` value
-- Use prompt caching when available
+- 过滤工具（若 `!imageInput` 则屏蔽 `read_image`）
+- 决定是否开启 thinking
+- 选择合适的压缩策略
+- 设置正确的 `tool_choice` 值
+- 在支持时启用 prompt caching
 
-## The identity module
+## identity 模块
 
-`packages/catalog/src/identity/` defines **stable symbolic IDs** for every model:
+`packages/catalog/src/identity/` 为每个模型定义**稳定的符号化 ID**：
 
 ```ts
 // packages/catalog/src/identity/index.ts
@@ -141,46 +141,46 @@ export const MODEL_ID = {
   MISTRAL_LARGE_2: "mistral-large-2",
   DEEPSEEK_R1: "deepseek-r1",
   GROQ_LLAMA_70B: "groq-llama-70b",
-  // ... 100+ aliases
+  // ... 100+ 别名
 } as const;
 
 export type ModelId = typeof MODEL_ID[keyof typeof MODEL_ID];
 ```
 
-Users can use either the stable ID or a friendly alias in their settings:
+用户可以在设置中既使用稳定 ID 也使用友好别名：
 
 ```json
 {
-  "model": "CLAUDE_OPUS_4_5"        // stable
+  "model": "CLAUDE_OPUS_4_5"        // 稳定 ID
 }
 ```
 ```json
 {
-  "model": "opus"                    // alias
+  "model": "opus"                    // 别名
 }
 ```
 
-The alias is resolved at session start via `identity/resolve.ts`. If the alias is ambiguous (e.g. "sonnet" could be 3.5 or 4), the user is prompted.
+别名会在会话开始时通过 `identity/resolve.ts` 解析。如果别名有歧义（例如 "sonnet" 既可能是 3.5 也可能是 4），就会向用户询问。
 
-## The build module
+## build 模块
 
-`packages/catalog/src/build.ts` generates the catalog from upstream sources:
+`packages/catalog/src/build.ts` 从上游来源生成目录：
 
 ```bash
 bun run catalog:build
 ```
 
-The build pulls from:
+构建会从以下来源拉取：
 
-1. **Anthropic** — `https://api.anthropic.com/v1/models` (live)
-2. **OpenAI** — `https://api.openai.com/v1/models` (live)
-3. **Google** — `https://generativelanguage.googleapis.com/v1/models` (live)
-4. **Static YAML** — `packages/catalog/src/catalog/static/*.yaml` (for self-hosted providers)
+1. **Anthropic** — `https://api.anthropic.com/v1/models`（实时）
+2. **OpenAI** — `https://api.openai.com/v1/models`（实时）
+3. **Google** — `https://generativelanguage.googleapis.com/v1/models`（实时）
+4. **静态 YAML** — `packages/catalog/src/catalog/static/*.yaml`（用于自托管提供方）
 
-The generated catalog is committed to `packages/catalog/src/catalog.generated.ts`. Like pi-mono, **never edit by hand** — the build is idempotent.
+生成的目录会被提交到 `packages/catalog/src/catalog.generated.ts`。和 pi-mono 一样，**永远不要手动编辑** —— 构建是幂等的。
 
 ```ts
-// packages/catalog/src/catalog.generated.ts (excerpt)
+// packages/catalog/src/catalog.generated.ts (节选)
 export const MODELS: Model[] = [
   {
     id: "claude-opus-4-5",
@@ -194,15 +194,15 @@ export const MODELS: Model[] = [
     cost: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
     effortLevels: ["low", "medium", "high", "max"]
   },
-  // ... 5000+ more
+  // ... 5000+ 更多
 ];
 ```
 
-The static YAML files are for providers that don't expose a `/models` endpoint (Ollama, vLLM, custom).
+静态 YAML 文件是给那些没有暴露 `/models` 端点的提供方（Ollama、vLLM、自定义等）使用的。
 
-## The compat module
+## compat 模块
 
-`packages/catalog/src/compat/` handles **legacy model IDs**:
+`packages/catalog/src/compat/` 处理**旧模型 ID**：
 
 ```ts
 // packages/catalog/src/compat/index.ts
@@ -211,21 +211,21 @@ export const MODEL_COMPAT: Record<string, ModelId> = {
   "claude-3-opus-20240229": MODEL_ID.CLAUDE_OPUS_4_5,
   "claude-3-5-sonnet-20240620": MODEL_ID.CLAUDE_SONNET_4,
   "claude-3-haiku-20240307": MODEL_ID.CLAUDE_HAIKU_4,
-  
+
   // OpenAI
   "gpt-4-turbo-preview": "gpt-4-turbo",
   "gpt-4-32k": "gpt-4",
   "gpt-3.5-turbo-16k": "gpt-3.5-turbo",
-  
+
   // Google
   "gemini-1.5-pro-latest": MODEL_ID.GEMINI_2_PRO,
   "gemini-1.5-flash-latest": MODEL_ID.GEMINI_2_FLASH,
   "gemini-pro": MODEL_ID.GEMINI_2_PRO,
-  
+
   // Mistral
   "mistral-large-latest": MODEL_ID.MISTRAL_LARGE_2,
-  
-  // ... 200+ entries
+
+  // ... 200+ 条记录
 };
 
 export function resolve(modelId: string): ModelId {
@@ -238,11 +238,11 @@ export function resolve(modelId: string): ModelId {
 }
 ```
 
-When the user sets `"model": "claude-3-opus-20240229"`, the compat layer maps it to `CLAUDE_OPUS_4_5` and warns. The user's settings file is **not** auto-updated — they have to fix it themselves (so they can decide when to upgrade).
+当用户设置 `"model": "claude-3-opus-20240229"` 时，compat 层会把它映射到 `CLAUDE_OPUS_4_5` 并发出警告。用户的设置文件**不会**被自动更新 —— 必须由用户自己修复（这样他们能决定何时升级）。
 
-## The discovery module
+## discovery 模块
 
-`packages/catalog/src/discovery/` is the **runtime model query** layer:
+`packages/catalog/src/discovery/` 是**运行时模型查询**层：
 
 ```ts
 // packages/catalog/src/discovery/builtin.ts
@@ -258,19 +258,19 @@ export async function refreshAll(): Promise<void>;
 export function mergeModels(builtin: Model[], runtime: Model[]): Model[];
 ```
 
-The flow:
+整体流程：
 
-1. Load `MODELS` from `catalog.generated.ts` (built-in)
-2. At session start, query each provider's `/v1/models` endpoint
-3. Merge: built-in provides cost + capability, runtime provides availability
-4. Cache the merged list for 1 hour
-5. Background refresh every 6 hours
+1. 从 `catalog.generated.ts` 加载 `MODELS`（内建）
+2. 在会话开始时，查询每个提供方的 `/v1/models` 端点
+3. 合并：内建提供 cost + capability，运行时提供可用性
+4. 合并后的列表缓存 1 小时
+5. 每 6 小时后台刷新一次
 
-This is how oh-my-pi knows that "Claude 4.5 Opus is now available" before the catalog is rebuilt.
+这就是 oh-my-pi 在目录重新构建之前就能知道 "Claude 4.5 Opus 已经可用" 的方式。
 
-## The effort module
+## effort 模块
 
-`packages/catalog/src/effort.ts` maps **reasoning effort levels** to provider-specific fields:
+`packages/catalog/src/effort.ts` 把**推理努力等级**映射到各提供方特有的字段：
 
 ```ts
 // packages/catalog/src/effort.ts
@@ -287,25 +287,25 @@ export interface EffortMapping {
 export function mapEffort(model: Model, level: EffortLevel): EffortMapping;
 ```
 
-The CLI flag `--smol` maps to `low`, `--slow` maps to `high`, `--plan` maps to `medium`. The TUI shows a dropdown of valid effort levels per model.
+CLI 参数 `--smol` 映射到 `low`，`--slow` 映射到 `high`，`--plan` 映射到 `medium`。TUI 会为每个模型展示一个有效努力等级的下拉框。
 
-## The hosts module
+## hosts 模块
 
-`packages/catalog/src/hosts.ts` is the **baseUrl registry**:
+`packages/catalog/src/hosts.ts` 是 **baseUrl 注册表**：
 
 ```ts
 export const PROVIDER_HOSTS: Record<ProviderId, string> = {
   anthropic: "https://api.anthropic.com",
   openai: "https://api.openai.com",
   google: "https://generativelanguage.googleapis.com",
-  // ... 40+ entries
+  // ... 40+ 条记录
 };
 
 export function getProviderHost(provider: ProviderId): string;
 export function setProviderHost(provider: ProviderId, host: string): void;
 ```
 
-Users override in `~/.omp/settings.json`:
+用户可以在 `~/.omp/settings.json` 中覆盖：
 
 ```json
 {
@@ -317,24 +317,24 @@ Users override in `~/.omp/settings.json`:
 }
 ```
 
-The override is persisted to `provider-hosts.json` in the user config dir.
+覆盖值会被持久化到用户配置目录下的 `provider-hosts.json` 中。
 
-## The provider-details module
+## provider-details 模块
 
-`packages/catalog/src/provider-details.ts` is the **per-provider configuration**:
+`packages/catalog/src/provider-details.ts` 是**按提供方的配置**：
 
 ```ts
 export interface ProviderDetails {
   id: ProviderId;
-  name: string;                    // display name
+  name: string;                    // 展示名
   homepage: string;
-  apiKeyUrl: string;               // where to get a key
-  apiKeyEnvVar: string;            // env var name
-  authMethods: AuthMethod[];       // apiKey, oauth, serviceAccount
+  apiKeyUrl: string;               // 在哪里获取 key
+  apiKeyEnvVar: string;            // 环境变量名
+  authMethods: AuthMethod[];       // apiKey、oauth、serviceAccount
   oauthProviders?: OAuthProvider[];
   defaultModel: ModelId;
   defaultEffort: EffortLevel;
-  regions?: string[];              // for Vertex, Bedrock
+  regions?: string[];              // 用于 Vertex、Bedrock
   notes?: string;
 }
 
@@ -349,18 +349,18 @@ export const PROVIDER_DETAILS: Record<ProviderId, ProviderDetails> = {
     defaultModel: "claude-sonnet-4",
     defaultEffort: "medium"
   },
-  // ... 40+ entries
+  // ... 40+ 条记录
 };
 ```
 
-The TUI's `/provider` wizard uses this to walk the user through setup.
+TUI 中的 `/provider` 向导会用它来一步步引导用户完成设置。
 
-## The fireworks-model-id module
+## fireworks-model-id 模块
 
-A small special case for Fireworks' model id format:
+针对 Fireworks 模型 ID 格式的一个小特例：
 
 ```ts
-// Fireworks uses path-style ids
+// Fireworks 使用 path 风格 ID
 export const FIREWORKS_ALIASES: Record<string, string> = {
   "llama-70b": "accounts/fireworks/models/llama-v3p1-70b-instruct",
   "qwen-72b": "accounts/fireworks/models/qwen2-vl-72b-instruct",
@@ -369,9 +369,9 @@ export const FIREWORKS_ALIASES: Record<string, string> = {
 };
 ```
 
-The user types `llama-70b`, oh-my-pi sends the path-style id to the API.
+用户输入 `llama-70b`，oh-my-pi 就会把 path 风格的 ID 发送给 API。
 
-## Public API
+## 公共 API
 
 ```ts
 // packages/catalog/src/index.ts
@@ -384,30 +384,30 @@ export * from "./hosts.js";
 export * from "./provider-details.js";
 export * from "./fireworks-model-id.js";
 
-// Convenience
+// 便捷方法
 export function getModel(id: ModelId): Model;
 export function listModels(filter?: { provider?: string; capability?: keyof ModelCapability }): Model[];
 export function resolveModel(id: string): Model;
 export function pickDefaultModel(): Model;
 ```
 
-## What's NOT in pi-catalog
+## pi-catalog 中不包含什么
 
-The catalog doesn't include:
+目录中不包含：
 
-- **API request/response shapes** — those are in `pi-ai`
-- **Tool definitions** — those are in `pi-coding-agent/core/tools/`
-- **System prompts** — those are in `pi-coding-agent` and extensions
-- **Pricing in fiat** — only token cost; the user multiplies by their per-token price
+- **API 请求/响应结构** — 这些在 `pi-ai` 中
+- **工具定义** — 这些在 `pi-coding-agent/core/tools/`
+- **系统提示词** — 这些在 `pi-coding-agent` 与扩展中
+- **法币定价** — 只有 token 成本；用户需要乘以自己的单价
 
-## Why this matters
+## 为什么这件事重要
 
-The catalog is the **stable contract** between the LLM world and oh-my-pi. When Anthropic renames a model, when OpenAI adds a new capability, when a new provider launches — the catalog is the **only** place that needs to change. The agent, the TUI, the CLI, the web — all consume the catalog and don't need to know about model specifics.
+目录是 LLM 世界与 oh-my-pi 之间的**稳定契约**。当 Anthropic 给模型改名，当 OpenAI 增加新能力，当新提供方上线 —— 目录是**唯一**需要变更的地方。Agent、TUI、CLI、Web 都消费目录，不需要知道模型的具体细节。
 
-This is why oh-my-pi can ship **42 providers** without the agent code growing proportionally. The agent code only knows about `Model`, `Context`, and `streamSimple()`. Everything else is catalog data.
+这就是为什么 oh-my-pi 能在 Agent 代码不按比例增长的情况下发布 **42 个提供方**。Agent 代码只关心 `Model`、`Context` 与 `streamSimple()`。其他一切都是目录数据。
 
-## Next
+## 接下来
 
-- [pi-ai · 40+ Providers](/docs/02-pi-ai) — the consumer of the catalog
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — the user-facing surface
-- [Multi-Provider](/docs/02-pi-ai) — how the providers plug into pi-ai
+- [pi-ai · 40+ 提供方](/docs/02-pi-ai) — 目录的消费者
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — 用户侧界面
+- [Multi-Provider](/docs/02-pi-ai) — 提供方如何接入 pi-ai

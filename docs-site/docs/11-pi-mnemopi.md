@@ -1,16 +1,16 @@
-# 11 · pi-mnemopi — Memory System
+# 11 · pi-mnemopi 长期记忆系统
 
-`@oh-my-pi/pi-mnemopi` is oh-my-pi's **long-term memory system**. Beyond the per-session JSONL, the agent can store persistent knowledge that survives across sessions: project facts, user preferences, code patterns, debugging insights, and more. Backed by embeddings for semantic search.
+`@oh-my-pi/pi-mnemopi` 是 oh-my-pi 的 **长期记忆系统**。除了按会话存储的 JSONL 之外，Agent 还可以存储跨会话存活的持久知识：项目事实、用户偏好、代码模式、调试洞察等。由 embedding 支持的语义搜索驱动。
 
-**Source:** `packages/mnemopi/src/` (10+ files: store.ts, embed.ts, search.ts, decay.ts, etc.)
+**源码：** `packages/mnemopi/src/`（10+ 个文件：store.ts、embed.ts、search.ts、decay.ts 等）
 
-## What's in memory
+## 记忆中有什么
 
-Three categories of memory:
+三类记忆：
 
-1. **Project memory** — facts about the project (architecture, conventions, quirks)
-2. **User memory** — facts about the user (preferences, habits, style)
-3. **Session memory** — learnings from past sessions (what worked, what didn't)
+1. **项目记忆** — 关于项目的事实（架构、约定、怪癖）
+2. **用户记忆** — 关于用户的事实（偏好、习惯、风格）
+3. **会话记忆** — 来自过往会话的学习（什么有效、什么无效）
 
 ```mermaid
 graph TB
@@ -20,50 +20,50 @@ graph TB
   Mem --> Session[Session Memory<br/>.omp/memory/sessions/]
 ```
 
-Each category is a separate file tree with its own scope and lifetime.
+每个类别都是一个独立的文件树，拥有自己的作用域与生命周期。
 
-## The `MemoryEntry` type
+## `MemoryEntry` 类型
 
 ```ts
 // packages/mnemopi/src/types.ts
 export interface MemoryEntry {
   id: MemoryId;                  // UUIDv7
   scope: "project" | "user" | "session";
-  projectId?: string;            // required for "project" and "session"
-  key: string;                   // dot-notation, e.g. "auth.method"
-  content: string;               // markdown body
-  
-  // Metadata
+  projectId?: string;            // "project" 和 "session" 必填
+  key: string;                   // 点号表示法，例如 "auth.method"
+  content: string;               // markdown 正文
+
+  // 元数据
   tags: string[];
-  importance: number;            // 0-1, affects decay
-  confidence: number;            // 0-1, affects retrieval weight
-  
+  importance: number;            // 0-1，影响衰减
+  confidence: number;            // 0-1，影响检索权重
+
   // Embedding
-  embedding?: number[];          // 384-dim float vector (optional)
-  
-  // Lifecycle
+  embedding?: number[];          // 384 维浮点向量（可选）
+
+  // 生命周期
   createdAt: Date;
   updatedAt: Date;
   lastAccessedAt: Date;
   accessCount: number;
-  
-  // Source
+
+  // 来源
   source: "agent" | "user" | "system" | "inferred";
-  sourceSessionId?: SessionId;   // for "inferred" or "agent"
-  
-  // Decay
-  decayRate: number;             // 0-1, higher = decays faster
-  expiresAt?: Date;              // optional TTL
+  sourceSessionId?: SessionId;   // 用于 "inferred" 或 "agent"
+
+  // 衰减
+  decayRate: number;             // 0-1，越高衰减越快
+  expiresAt?: Date;              // 可选 TTL
 }
 ```
 
-The fields form three groups:
+这些字段分为三组：
 
-- **Identity** — `id`, `scope`, `projectId`, `key`, `content`
-- **Lifecycle** — `createdAt`, `updatedAt`, `lastAccessedAt`, `accessCount`, `decayRate`, `expiresAt`
-- **Quality** — `importance`, `confidence`, `source`
+- **身份** — `id`、`scope`、`projectId`、`key`、`content`
+- **生命周期** — `createdAt`、`updatedAt`、`lastAccessedAt`、`accessCount`、`decayRate`、`expiresAt`
+- **质量** — `importance`、`confidence`、`source`
 
-## The file layout
+## 文件布局
 
 ```
 .omp/memory/
@@ -75,7 +75,7 @@ The fields form three groups:
 │   ├── style/
 │   │   ├── commit-messages.md
 │   │   └── code-review.md
-│   └── index.json              # embedding index
+│   └── index.json              # embedding 索引
 ├── project/
 │   ├── architecture/
 │   │   ├── backend.md
@@ -96,21 +96,21 @@ The fields form three groups:
     └── ...
 ```
 
-Each `.md` file is a memory entry. Each `index.json` is the embedding index (for fast semantic search).
+每个 `.md` 文件都是一条记忆条目。每个 `index.json` 是 embedding 索引（用于快速语义搜索）。
 
-## The 3 memory tools
+## 3 个记忆工具
 
-| Tool | Args | Behavior |
+| 工具 | 参数 | 行为 |
 |------|------|----------|
-| `memory_read` | `key: string` | Returns the markdown content |
-| `memory_write` | `key: string, content: string, importance?: number, tags?: string[]` | Writes (or overwrites) the entry, computes embedding |
-| `memory_list` | `scope?: string, prefix?: string` | Lists entries, with optional prefix filter |
+| `memory_read` | `key: string` | 返回 markdown 内容 |
+| `memory_write` | `key: string, content: string, importance?: number, tags?: string[]` | 写入（或覆盖）条目，计算 embedding |
+| `memory_list` | `scope?: string, prefix?: string` | 列出条目，可选前缀过滤 |
 
-The `memory_list` tool also returns a **score** for each entry, ranked by relevance to the current context (via embedding similarity).
+`memory_list` 工具还会为每条记录返回一个 **分数**，按与当前上下文的相关性排序（通过 embedding 相似度）。
 
-## Semantic search
+## 语义搜索
 
-When the agent calls `memory_list`, the results are **ranked by semantic similarity** to the current context:
+当 Agent 调用 `memory_list` 时，结果按与当前上下文的 **语义相似度** 排序：
 
 ```ts
 // packages/mnemopi/src/search.ts
@@ -122,25 +122,25 @@ export async function list(
 ): Promise<MemoryEntry[]>;
 
 export interface SearchContext {
-  currentTask?: string;          // current user prompt
-  recentMessages?: AgentMessage[]; // last N turns
-  activeFile?: string;            // current file being edited
+  currentTask?: string;          // 当前用户提示
+  recentMessages?: AgentMessage[]; // 最近的 N 轮
+  activeFile?: string;            // 当前正在编辑的文件
 }
 
 export interface ScoredMemory extends MemoryEntry {
   score: number;                 // 0-1
-  matchedTerms: string[];        // for explanation
+  matchedTerms: string[];        // 用于解释
 }
 ```
 
-The search uses:
+搜索使用：
 
-1. **Embedding similarity** — cosine similarity between the context embedding and each entry's embedding
-2. **Recency** — newer entries score higher
-3. **Access count** — frequently-accessed entries score higher
-4. **Importance** — explicitly marked important entries score higher
+1. **Embedding 相似度** — 上下文 embedding 与每条条目 embedding 之间的余弦相似度
+2. **时效性** — 越新的条目分数越高
+3. **访问次数** — 被频繁访问的条目分数越高
+4. **重要性** — 被显式标记为重要的条目分数越高
 
-The final score is a weighted sum:
+最终分数是一个加权求和：
 
 ```
 score = 0.6 * embedding_similarity
@@ -149,26 +149,26 @@ score = 0.6 * embedding_similarity
       + 0.1 * importance
 ```
 
-## Embedding model
+## Embedding 模型
 
-`pi-mnemopi` uses a local embedding model by default:
+`pi-mnemopi` 默认使用本地 embedding 模型：
 
-- **`@huggingface/transformers`** — runs a small embedding model in-process
-- Default model: **`Xenova/all-MiniLM-L6-v2`** (384-dim, 22M params, ~30MB download)
-- Fallback: provider API (OpenAI `text-embedding-3-small` or equivalent)
+- **`@huggingface/transformers`** — 在进程内运行一个小型 embedding 模型
+- 默认模型：**`Xenova/all-MiniLM-L6-v2`**（384 维，22M 参数，约 30MB 下载）
+- 回退方案：提供方 API（OpenAI `text-embedding-3-small` 或同等）
 
-The local model is preferred for:
+本地模型的优先场景：
 
-- Privacy (no data leaves the host)
-- Speed (no network round-trip)
-- Cost (no per-token charge)
+- 隐私（数据不离开本机）
+- 速度（无网络往返）
+- 成本（无按 token 计费）
 
-The provider API is preferred for:
+提供方 API 的优先场景：
 
-- Quality (OpenAI embeddings are state-of-the-art)
-- Multilingual support (local model is English-biased)
+- 质量（OpenAI 的 embedding 是业界最先进水平）
+- 多语言支持（本地模型偏向英语）
 
-User can configure in `~/.omp/settings.json`:
+用户可在 `~/.omp/settings.json` 中配置：
 
 ```json
 {
@@ -177,15 +177,15 @@ User can configure in `~/.omp/settings.json`:
       "provider": "local",     // "local" | "openai" | "cohere" | "voyage"
       "model": "Xenova/all-MiniLM-L6-v2",
       "dimensions": 384,
-      "cacheSize": 1000        // LRU cache for recent embeddings
+      "cacheSize": 1000        // 最近 embedding 的 LRU 缓存
     }
   }
 }
 ```
 
-## The write path
+## 写入路径
 
-When the agent writes to memory:
+当 Agent 写入记忆时：
 
 ```mermaid
 sequenceDiagram
@@ -195,24 +195,24 @@ sequenceDiagram
     participant FS
 
     Agent->>Mem: memory_write("auth.method", "JWT with refresh tokens", importance=0.8)
-    Mem->>Mem: validate key, normalize content
+    Mem->>Mem: 校验 key，归一化 content
     Mem->>Embed: embed(content)
-    Embed-->>Mem: 384-dim vector
-    Mem->>FS: write .omp/memory/project/auth/method.md
-    Mem->>FS: update .omp/memory/project/index.json
+    Embed-->>Mem: 384 维向量
+    Mem->>FS: 写入 .omp/memory/project/auth/method.md
+    Mem->>FS: 更新 .omp/memory/project/index.json
     Mem-->>Agent: { id, embedding: "computed" }
 ```
 
-The write is:
+写入行为具有以下特性：
 
-1. **Idempotent** — writing the same key overwrites (no duplicates)
-2. **Atomic** — the file is written first, then the index (or rolled back)
-3. **Embedding-eager** — the embedding is computed before the file is written
-4. **Logged** — every write is logged to OpenTelemetry
+1. **幂等** — 对同一个 key 写入会覆盖（无重复）
+2. **原子** — 先写文件，再更索引（或回滚）
+3. **Embedding 优先** — 在文件写入之前就计算好 embedding
+4. **可追溯** — 每次写入都会记录到 OpenTelemetry
 
-## The read path
+## 读取路径
 
-When the agent calls `memory_list`:
+当 Agent 调用 `memory_list` 时：
 
 ```mermaid
 sequenceDiagram
@@ -222,61 +222,61 @@ sequenceDiagram
     participant FS
 
     Agent->>Mem: memory_list(scope="project", context={ currentTask, activeFile })
-    Mem->>Embed: embed(context)  // compute query embedding
-    Embed-->>Mem: 384-dim vector
-    Mem->>FS: load index.json
-    FS-->>Mem: all entries with embeddings
-    Mem->>Mem: rank by score (similarity + recency + access + importance)
-    Mem->>Mem: filter by prefix (if provided)
-    Mem-->>Agent: top N entries with scores
+    Mem->>Embed: embed(context)  // 计算查询 embedding
+    Embed-->>Mem: 384 维向量
+    Mem->>FS: 加载 index.json
+    FS-->>Mem: 所有条目及其 embedding
+    Mem->>Mem: 按分数排序（相似度 + 时效 + 访问 + 重要性）
+    Mem->>Mem: 按前缀过滤（如提供）
+    Mem-->>Agent: 前 N 条条目及其分数
 ```
 
-The read is:
+读取行为具有以下特性：
 
-1. **Contextual** — the ranking depends on what the agent is doing
-2. **Fast** — typically < 5ms for 1000 entries
-3. **Explainable** — the `matchedTerms` field shows why each entry scored
+1. **上下文感知** — 排序结果取决于 Agent 当前在做什么
+2. **快速** — 1000 条记录通常 < 5ms
+3. **可解释** — `matchedTerms` 字段显示每条条目得分的依据
 
-## Decay
+## 衰减
 
-Memory entries have a **decay rate**. Unused entries fade over time:
+记忆条目有一个 **衰减率**。未被使用的条目会随时间淡出：
 
 ```ts
 // packages/mnemopi/src/decay.ts
 export function applyDecay(entry: MemoryEntry, now: Date = new Date()): MemoryEntry {
   const ageDays = (now.getTime() - entry.lastAccessedAt.getTime()) / (1000 * 60 * 60 * 24);
   const decayFactor = Math.exp(-entry.decayRate * ageDays);
-  
+
   return {
     ...entry,
     importance: entry.importance * decayFactor,
-    // Entries with importance < 0.1 are candidates for archival
+    // importance < 0.1 的条目是归档候选
   };
 }
 ```
 
-Default decay rates:
+默认衰减率：
 
-| Scope | Default decay rate | Meaning |
+| 作用域 | 默认衰减率 | 含义 |
 |-------|-------------------|---------|
-| `user` | 0.005 | ~0.5% per day, half-life ~140 days |
-| `project` | 0.01 | ~1% per day, half-life ~70 days |
-| `session` | 0.05 | ~5% per day, half-life ~14 days |
+| `user` | 0.005 | 每天约 0.5%，半衰期约 140 天 |
+| `project` | 0.01 | 每天约 1%，半衰期约 70 天 |
+| `session` | 0.05 | 每天约 5%，半衰期约 14 天 |
 
-The agent can set custom decay rates on write. The decay is applied lazily (on read), not eagerly (no background process).
+Agent 可以在写入时设定自定义衰减率。衰减是 **惰性** 应用的（在读取时），而非 **主动** 应用（无后台进程）。
 
-## The `inferred` source
+## `inferred` 来源
 
-Some memory entries are **inferred** by the system, not written by the user or agent:
+一些记忆条目是系统 **推断** 出来的，而非由用户或 Agent 写入：
 
-- "User prefers semicolons" — inferred from past edits
-- "Project uses Prettier with single quotes" — inferred from `.prettierrc`
-- "Test suite takes 30s" — inferred from observed timings
+- "用户偏好分号" — 从过去的编辑中推断
+- "项目使用 Prettier 单引号" — 从 `.prettierrc` 推断
+- "测试套件耗时 30s" — 从观察到的计时推断
 
-The system runs an **inference pass** at session end:
+系统在会话结束时会运行一次 **推断流程**：
 
 ```ts
-// In the session lifecycle
+// 在会话生命周期中
 async function inferMemory(session: SnapSession) {
   const recentMessages = await loadMessages(session.id, { last: 50 });
   const inferencePrompt = `
@@ -295,7 +295,7 @@ async function inferMemory(session: SnapSession) {
 }
 ```
 
-The user can disable inference in `~/.omp/settings.json`:
+用户可以在 `~/.omp/settings.json` 中关闭推断：
 
 ```json
 {
@@ -305,9 +305,9 @@ The user can disable inference in `~/.omp/settings.json`:
 }
 ```
 
-## The knowledge graph
+## 知识图谱
 
-`pi-mnemopi` also maintains a **knowledge graph** linking related memory entries:
+`pi-mnemopi` 还维护一个 **知识图谱**，把相关的记忆条目关联起来：
 
 ```ts
 // packages/mnemopi/src/graph.ts
@@ -324,23 +324,23 @@ export interface MemoryEdge {
 }
 ```
 
-Example:
+示例：
 
 - `auth.method = "JWT"` (related to) → `auth.refresh = "yes"`
-- `auth.method = "OAuth"` (supersedes) → `auth.method = "JWT"` (old)
+- `auth.method = "OAuth"` (supersedes) → `auth.method = "JWT"` (旧)
 
-The graph is built by the inference pass and updated on every write. The agent can query:
+知识图谱由推断流程构建，并在每次写入时更新。Agent 可以查询：
 
 ```ts
 const graph = await mem.getGraph();
 const related = graph.edges.filter(e => e.from === entryId);
 ```
 
-Useful for "what else do I know about X?".
+用于回答"我还知道关于 X 的什么"这类问题。
 
-## The session-scoped memory
+## 会话作用域的记忆
 
-Session memory is special — it lives only for the session duration:
+会话记忆比较特殊 —— 它只在会话期间存活：
 
 ```
 .omp/memory/sessions/<sessionId>/
@@ -349,24 +349,24 @@ Session memory is special — it lives only for the session duration:
 └── blockers.md
 ```
 
-The agent uses session memory to track in-progress work:
+Agent 使用会话记忆来跟踪进行中的工作：
 
-- **`learnings.md`** — "TIL: this project uses Bun, not Node"
-- **`decisions.md`** — "Chose to use BTRFS for snapshots because..."
-- **`blockers.md`** — "Can't proceed until user provides API key"
+- **`learnings.md`** — "TIL：本项目用 Bun 而非 Node"
+- **`decisions.md`** — "选择用 BTRFS 做快照是因为……"
+- **`blockers.md`** — "在用户提供 API key 之前无法继续"
 
-At session end, the user can promote session memory to project memory (or discard it).
+在会话结束时，用户可以将会话记忆提升为项目记忆（或直接丢弃）。
 
-## The `commit` and `restore` integration
+## 与 `commit` / `restore` 的集成
 
-`snapcompact` is aware of `pi-mnemopi`. When the session is committed or restored:
+`snapcompact` 了解 `pi-mnemopi`。当会话被提交或恢复时：
 
-- **Commit** — session memory is preserved (next session can read it)
-- **Restore** — session memory is rolled back too (if it was created after the checkpoint)
+- **Commit** — 会话记忆被保留（下个会话可以读取）
+- **Restore** — 会话记忆也被回滚（如果是在 checkpoint 之后创建的）
 
-This keeps memory consistent with the filesystem state.
+这保证了记忆与文件系统状态的一致性。
 
-## Configuration
+## 配置
 
 ```json
 {
@@ -384,24 +384,24 @@ This keeps memory consistent with the filesystem state.
     },
     "inferOnSessionEnd": true,
     "inferenceModel": "claude-haiku-4",
-    "maxEntries": 10000,           // per scope
-    "maxContentLength": 10000      // per entry
+    "maxEntries": 10000,           // 每个作用域
+    "maxContentLength": 10000      // 每条条目
   }
 }
 ```
 
-The `maxEntries` setting prunes low-importance entries when the limit is hit.
+`maxEntries` 设置会在触达上限时剪除低重要性条目。
 
-## What's NOT in pi-mnemopi
+## pi-mnemopi 中不包含的内容
 
-- **Cross-project memory** — entries are scoped to a project; no global knowledge
-- **Collaborative memory** — entries are per-user; no team sharing
-- **Encryption** — the markdown files are plain text; use filesystem encryption
-- **Versioning** — entries don't have history (the JSONL does, but memory is current state only)
+- **跨项目记忆** — 条目作用域在单个项目内，没有全局知识
+- **协作式记忆** — 条目按用户隔离，没有团队共享
+- **加密** — markdown 文件是明文；请使用文件系统加密
+- **版本控制** — 条目没有历史（JSONL 有，但记忆只有当前状态）
 
-## Next
+## 下一篇
 
-- [snapcompact](/docs/10-snapcompact) — the persistence layer
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — the consumer
-- [pi-wire](/docs/12-pi-wire) — the wire protocol for cross-process memory
-- [omp-stats](/docs/15-omp-stats) — telemetry
+- [snapcompact](/docs/10-snapcompact) — 持久化层
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — 使用方
+- [pi-wire](/docs/12-pi-wire) — 跨进程记忆的线协议
+- [omp-stats](/docs/15-omp-stats) — 遥测

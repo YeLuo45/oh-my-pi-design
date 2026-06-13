@@ -1,31 +1,31 @@
-# 16 · swarm-extension 多 Agent 编排
+# 16 · swarm-extension — Sub-agents
 
-`@oh-my-pi/swarm-extension` 是 oh-my-pi 的 **多 Agent 编排** 层。为并行工作衍生子 Agent、协调它们，并把结果合并回父会话。4 种蜂群策略让你可以为任务挑选合适的并行模型。
+`@oh-my-pi/swarm-extension` is oh-my-pi's **multi-agent orchestration** layer. Spawn sub-agents for parallel work, coordinate them, and merge their results back into the parent session. The 4 swarming strategies let you pick the right parallelism model for the task.
 
-**源码：** `packages/swarm-extension/src/`（extension.ts、swarm/、cli.ts）
+**Source:** `packages/swarm-extension/src/` (extension.ts, swarm/, cli.ts)
 
-## 单 Agent 循环的问题
+## The problem with single-agent loops
 
-有些任务天然就是并行的：
+Some tasks are inherently parallel:
 
-- "在代码库里搜索所有 `User` 的用法并按文件分组"
-- "并行运行所有单元测试并报告失败"
-- "为这个设计生成 5 个变体并选出最佳"
-- "比较 3 个不同 LLM 提供方对同一提示的响应"
+- "Search for all uses of `User` in the codebase and group by file"
+- "Run all the unit tests in parallel and report failures"
+- "Generate 5 variations of this design and pick the best"
+- "Compare 3 different LLM providers' responses to the same prompt"
 
-单 Agent 只能 **顺序** 处理这些 —— 它受限于 LLM 响应时间、工具延迟以及 Agent 自身的串行推理。对于这类任务，单 Agent 比必要的慢 5-10 倍。
+A single agent has to do these **sequentially** — it's bound by the LLM's response time, the tool's latency, and the agent's serial reasoning. For these tasks, a single agent is 5-10× slower than necessary.
 
-`swarm-extension` 通过 **衍生子 Agent 并行工作** 来解决这个问题。
+The `swarm-extension` solves this by **spawning sub-agents** that work in parallel.
 
-## 4 种策略
+## The 4 strategies
 
 ```ts
 // packages/swarm-extension/src/swarm/strategies.ts
 export type SwarmStrategy =
-  | "fan-out"       // N 个子 Agent，每个执行同一任务，结果合并
-  | "map"           // N 个子 Agent，每个处理列表中的一个条目
-  | "chain"         // N 个子 Agent，每个在前一个输出基础上精炼
-  | "debate"        // N 个子 Agent，各自为一种立场辩护，然后互相辩论
+  | "fan-out"       // N sub-agents, each does the same task, results merged
+  | "map"           // N sub-agents, each handles one item from a list
+  | "chain"         // N sub-agents, each refines the previous's output
+  | "debate"        // N sub-agents, each argues a position, then they debate
 ```
 
 ### 1. `fan-out`
@@ -33,20 +33,20 @@ export type SwarmStrategy =
 ```ts
 const result = await swarm.fanOut({
   prompt: "Review the security of this file",
-  n: 3,                                          // 3 个子 Agent
-  model: claudeOpusModel,                        // 每个使用相同模型
+  n: 3,                                          // 3 sub-agents
+  model: claudeOpusModel,                        // same model for each
   tools: [readTool, grepTool, lspDefinition],
-  aggregationStrategy: "majority-vote"           // 或 "best-of" 或 "merge"
+  aggregationStrategy: "majority-vote"           // or "best-of" or "merge"
 });
 ```
 
-3 个子 Agent 并行执行同一任务。结果被聚合：
+The 3 sub-agents work in parallel on the same task. The results are aggregated:
 
-- **`majority-vote`** — 出现次数最多的答案获胜
-- **`best-of`** — 由一个裁判模型选出最佳
-- **`merge`** — 由一个模型将 3 个答案合并为一个
+- **`majority-vote`** — most common answer wins
+- **`best-of`** — a judge model picks the best
+- **`merge`** — a model merges all 3 into one
 
-使用场景：代码评审、安全审计，以及任何需要多重视角的任务。
+Use case: code review, security audit, any task where multiple perspectives are valuable.
 
 ### 2. `map`
 
@@ -54,13 +54,13 @@ const result = await swarm.fanOut({
 const result = await swarm.map({
   items: ["src/auth.ts", "src/user.ts", "src/order.ts", "src/payment.ts"],
   task: "Find the security issues in this file",
-  model: claudeSonnetModel,                      // 每个文件可以用更便宜的模型
+  model: claudeSonnetModel,                      // can be cheaper per file
   tools: [readTool, grepTool, lspDefinition],
   maxConcurrent: 4
 });
 ```
 
-每个子 Agent 处理列表中的一项。使用场景：逐文件分析、逐测试调试、批量重构。
+Each sub-agent handles one item from the list. Use case: file-by-file analysis, per-test debugging, batch refactoring.
 
 ### 3. `chain`
 
@@ -75,7 +75,7 @@ const result = await swarm.chain({
 });
 ```
 
-每个子 Agent 在前一个的输出基础上精炼。使用场景：多阶段推理、设计迭代、内容改进。
+Each sub-agent refines the previous's output. Use case: multi-stage reasoning, design iteration, content improvement.
 
 ### 4. `debate`
 
@@ -88,54 +88,54 @@ const result = await swarm.debate({
 });
 ```
 
-N 个子 Agent 为不同立场辩护，然后互相辩论。由一名裁判选出获胜方。使用场景：架构决策、权衡分析、"我们应不应该做 X" 这类问题。
+N sub-agents argue different positions, then debate. A judge picks the winner. Use case: architecture decisions, trade-off analysis, "should we X?" questions.
 
-## 4 个子 Agent
+## The 4 sub-agents
 
 ```mermaid
 graph TB
   Parent[Parent Agent]
-
+  
   subgraph Sub1[Sub-agent 1]
     S1Model[model: opus]
     S1Tools[tools: read, hashline, lsp_*]
     S1Context[context: read-only]
   end
-
+  
   subgraph Sub2[Sub-agent 2]
     S2Model[model: sonnet]
     S2Tools[tools: read, grep, glob]
     S2Context[context: read-only]
   end
-
+  
   subgraph Sub3[Sub-agent 3]
     S3Model[model: haiku]
     S3Tools[tools: web_search, fetch_url]
     S3Context[context: search-only]
   end
-
+  
   Parent -->|spawn| Sub1
   Parent -->|spawn| Sub2
   Parent -->|spawn| Sub3
-
+  
   Sub1 -->|result| Parent
   Sub2 -->|result| Parent
   Sub3 -->|result| Parent
 ```
 
-每个子 Agent 都是一个 **完整的 AgentSession**，具有：
+Each sub-agent is a **full AgentSession** with:
 
-- 自己的模型（可以与父 Agent 不同）
-- 自己的工具列表（可以是父 Agent 的子集）
-- 自己的上下文（从父 Agent 初始化，但会发散）
-- 自己的压缩策略
-- 自己的 session ID（在同一个 `omp` 进程中）
+- Its own model (can be different from the parent)
+- Its own tool list (can be a subset of the parent's)
+- Its own context (initialized from the parent, but diverges)
+- Its own compaction strategy
+- Its own session ID (in the same `omp` process)
 
-子 Agent 与父 Agent **相互隔离** —— 除了初始提示之外，它无法读取父 Agent 的上下文。它的结果会作为一条工具结果返回给父 Agent。
+The sub-agent is **isolated** from the parent — it can't read the parent's context beyond the initial prompt. Its results are returned to the parent as a single tool result.
 
-## `subagent` 工具
+## The `subagent` tool
 
-`swarm-extension` 注册了一个 **`subagent`** 工具：
+The `swarm-extension` registers a **`subagent`** tool:
 
 ```ts
 const subagentTool: AgentTool = {
@@ -179,9 +179,9 @@ const subagentTool: AgentTool = {
 };
 ```
 
-父 Agent 与使用其他工具一样使用这个工具。衍生、协调和结果聚合都由 swarm-extension 处理。
+The parent agent uses this tool like any other. The swarm-extension handles spawning, coordination, and result aggregation.
 
-## 生命周期
+## The lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -192,7 +192,7 @@ sequenceDiagram
     participant Sub3 as Sub-agent 3
 
     Parent->>Swarm: subagent({ strategy: "fan-out", n: 3, prompt })
-
+    
     par parallel
         Swarm->>Sub1: spawn({ prompt, model, tools })
     and
@@ -200,7 +200,7 @@ sequenceDiagram
     and
         Swarm->>Sub3: spawn({ prompt, model, tools })
     end
-
+    
     par parallel work
         Sub1->>Sub1: agent loop
     and
@@ -208,24 +208,24 @@ sequenceDiagram
     and
         Sub3->>Sub3: agent loop
     end
-
+    
     Sub1-->>Swarm: result { text, toolCalls, ... }
     Sub2-->>Swarm: result { text, toolCalls, ... }
     Sub3-->>Swarm: result { text, toolCalls, ... }
-
+    
     Swarm->>Swarm: aggregate (majority-vote / best-of / merge)
-    Swarm-->>Parent: 聚合后的结果
+    Swarm-->>Parent: aggregated result
 ```
 
-父 Agent 在子 Agent 工作的过程中 **被阻塞**（`subagent` 工具是同步的）。子 Agent 通过 `Promise.all` 并行工作（CPU 密集型工作则使用工作线程）。
+The parent is **blocked** while the sub-agents work (the `subagent` tool is synchronous). The sub-agents work in parallel via `Promise.all` (or worker threads for CPU-bound work).
 
-## 聚合策略
+## The aggregation strategies
 
 ### `majority-vote`
 
 ```ts
 async function majorityVote(results: SwarmResult[]): Promise<SwarmResult> {
-  // 选出最常见的最终答案
+  // Pick the most common final answer
   const counts = new Map<string, number>();
   for (const r of results) {
     const key = normalize(r.text);
@@ -236,7 +236,7 @@ async function majorityVote(results: SwarmResult[]): Promise<SwarmResult> {
 }
 ```
 
-"normalize" 函数会去掉空白、忽略标点并小写化 —— 因此 `"yes."` 和 `"Yes"` 视为同一票。
+The "normalize" function strips whitespace, ignores punctuation, and lowercases — so `"yes."` and `"Yes"` are the same vote.
 
 ### `best-of`
 
@@ -245,24 +245,24 @@ async function bestOf(results: SwarmResult[], judge: Model): Promise<SwarmResult
   const prompt = `
     Pick the best of these N responses:
     ${results.map((r, i) => `## Response ${i + 1}\n${r.text}`).join("\n\n")}
-
+    
     Output the index of the best response, with a brief reason.
   `;
-
+  
   const stream = await streamSimple(judge, {
     messages: [{ role: "user", content: prompt }]
   });
-
+  
   let text = "";
   for await (const e of stream) if (e.type === "text") text += e.delta;
-
+  
   const match = text.match(/(\d+)/);
   const idx = match ? parseInt(match[1]) - 1 : 0;
   return results[idx];
 }
 ```
 
-由一个裁判模型从 N 个中选出最佳。裁判通常比工作模型 **能力更强**。
+A judge model picks the best of N. The judge is usually a **more capable** model than the workers.
 
 ### `merge`
 
@@ -271,19 +271,19 @@ async function merge(results: SwarmResult[], merger: Model): Promise<SwarmResult
   const prompt = `
     Merge these N responses into one comprehensive response:
     ${results.map((r, i) => `## Response ${i + 1}\n${r.text}`).join("\n\n")}
-
+    
     Preserve the unique insights from each. Output the merged response.
   `;
-
-  // ... 与 bestOf 类似
+  
+  // ... similar to bestOf
 }
 ```
 
-由一个模型把全部 N 个合并为一个。使用场景：每个回答都有独到见解（不适合投票）。
+A model merges all N into one. Use case: when each response has unique insights (not a vote situation).
 
-## 工具隔离
+## The tool isolation
 
-默认情况下，子 Agent 拥有 **只读** 工具列表：
+By default, sub-agents have a **read-only** tool list:
 
 ```ts
 const SUBAGENT_DEFAULT_TOOLS = [
@@ -292,41 +292,41 @@ const SUBAGENT_DEFAULT_TOOLS = [
   "dap_evaluate", "dap_variables",
   "memory_read", "memory_list",
   "web_search", "fetch_url",
-  "hashline"  // 只读的行信息
+  "hashline"  // read-only line info
 ];
 ```
 
-没有 `write`、`edit`、`bash`、`process`、`hashline_replace`、`hashline_insert`、`snap`、`restore`。子 Agent 可以 **观察**，但不能 **修改**。
+No `write`, `edit`, `bash`, `process`, `hashline_replace`, `hashline_insert`, `snap`, `restore`. The sub-agent can **observe** but not **modify**.
 
-如果父 Agent 希望子 Agent 能够写入，必须 **显式开启**：
+If the parent wants the sub-agent to be able to write, it has to **explicitly opt in**:
 
 ```ts
 await swarm.run({
   strategy: "fan-out",
   prompt: "Fix the TypeScript errors in this file",
-  tools: ["read", "hashline", "hashline_replace"],  // 包含写入工具
+  tools: ["read", "hashline", "hashline_replace"],  // include the write tool
   allowWrites: true
 });
 ```
 
-`allowWrites: true` 标志会被作为一条警告记录到 OpenTelemetry。
+The `allowWrites: true` flag is logged to OpenTelemetry as a warning.
 
-## 上下文初始化
+## The context initialization
 
-当一个子 Agent 被衍生时，它的上下文从父 Agent 初始化：
+When a sub-agent is spawned, its context is initialized from the parent's:
 
 ```ts
 async function initSubagentContext(parent: AgentSession, prompt: string): Promise<Context> {
-  // 1. 取出父 Agent 的 system prompt
-  // 2. 取出父 Agent 的最近 N 轮（默认 5）
-  // 3. 加入子 Agent 自己的具体提示
-  // 4. 初始化子 Agent 的工具列表
-  // 5. 设置子 Agent 的模型
-
+  // 1. Take the parent's system prompt
+  // 2. Take the parent's last N turns (default 5)
+  // 3. Add the sub-agent's specific prompt
+  // 4. Initialize the sub-agent's tool list
+  // 5. Set the sub-agent's model
+  
   return {
     systemPrompt: parent.state.systemPrompt,
     messages: [
-      ...parent.state.messages.slice(-5),  // 最近 5 轮
+      ...parent.state.messages.slice(-5),  // last 5 turns
       { role: "user", content: prompt }
     ],
     tools: filteredTools,
@@ -335,11 +335,11 @@ async function initSubagentContext(parent: AgentSession, prompt: string): Promis
 }
 ```
 
-子 Agent 看到父 Agent 最近的上下文，然后开始发散。子 Agent 的变化不会反向传播到父 Agent（除了最终的工具结果）。
+The sub-agent sees the parent's recent context, then diverges. The sub-agent's changes don't propagate back to the parent (except via the final tool result).
 
-## 结果格式
+## The result format
 
-子 Agent 的结果作为一条工具结果返回给父 Agent：
+The sub-agent's result is returned to the parent as a single tool result:
 
 ```ts
 {
@@ -362,11 +362,11 @@ async function initSubagentContext(parent: AgentSession, prompt: string): Promis
 }
 ```
 
-父 Agent 会看到聚合后的结果以及每个子 Agent 的统计信息。
+The parent sees the aggregated result and the per-sub-agent stats.
 
-## 超时
+## The timeout
 
-每个子 Agent 都有一个 **超时**（默认 5 分钟）。如果超时未完成，它会被取消并返回一个错误：
+Each sub-agent has a **timeout** (default 5 minutes). If it doesn't complete in time, it's cancelled and an error is returned:
 
 ```ts
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -377,49 +377,49 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 ```
 
-取消是 **优雅的** —— 子 Agent 当前的操作被允许完成（或者在它响应信号时中止），然后子 Agent 被关闭。
+The cancellation is **graceful** — the sub-agent's current operation is allowed to finish (or abort if it respects the signal), then the sub-agent is closed.
 
-## 递归
+## The recursion
 
-子 Agent 可以 **衍生自己的子 Agent**（有深度上限）：
+Sub-agents can **spawn their own sub-agents** (up to a depth limit):
 
 ```ts
 {
-  maxSubagentDepth: 3  // 默认
+  maxSubagentDepth: 3  // default
 }
 ```
 
-深度按子 Agent 跟踪。当一个子 Agent 衍生孙 Agent 时，深度递增。在深度 3 时，孙 Agent 无法再衍生子 Agent。
+The depth is tracked per-sub-agent. When a sub-agent spawns a sub-sub-agent, the depth is incremented. At depth 3, the sub-sub-agent cannot spawn further sub-agents.
 
-这能防止无限递归，同时允许层次化的任务分解。
+This prevents infinite recursion while allowing hierarchical task decomposition.
 
-## 成本控制
+## The cost control
 
-子 Agent 使用 **独立的模型 + token 预算**：
+Sub-agents use **separate model + token budgets**:
 
 ```ts
 {
   swarmBudget: {
-    perSubagent: { maxCost: 1.00 },  // 每个子 Agent 1 美元
-    perSwarm: { maxCost: 5.00 },     // 每次蜂群调用 5 美元
-    perSession: { maxCost: 20.00 }   // 每个会话 20 美元
+    perSubagent: { maxCost: 1.00 },  // $1 per sub-agent
+    perSwarm: { maxCost: 5.00 },     // $5 per swarm call
+    perSession: { maxCost: 20.00 }   // $20 per session
   }
 }
 ```
 
-如果某个预算被超出，子 Agent 会被暂停并通知父 Agent。用户可以在每次蜂群调用时覆盖：
+If a budget is exceeded, the sub-agent is paused and the parent is notified. The user can override per-swarm-call:
 
 ```ts
 await swarm.run({
   strategy: "fan-out",
   prompt: "...",
-  budget: { maxCost: 0.50 }  // 覆盖默认值
+  budget: { maxCost: 0.50 }  // override the default
 });
 ```
 
-成本通过同一个 `omp-stats` 指标进行跟踪。
+The cost is tracked via the same `omp-stats` metrics.
 
-## 与父 Agent 会话的集成
+## The integration with the parent's session
 
 ```mermaid
 flowchart LR
@@ -429,7 +429,7 @@ flowchart LR
   Snappy[snapcompact]
   Mem[pi-mnemopi]
   Stats[omp-stats]
-
+  
   Parent -->|spawn| Sub1
   Parent -->|spawn| Sub2
   Parent -->|checkpoint| Snappy
@@ -440,29 +440,29 @@ flowchart LR
   Sub2 -->|spans| Stats
 ```
 
-子 Agent 与父 Agent 共享：
+Sub-agents share the parent's:
 
-- **snapcompact 快照** — 父 Agent 在蜂群调用前打 checkpoint
-- **pi-mnemopi 记忆** — 子 Agent 可以读取父 Agent 的记忆
-- **omp-stats** — 所有子 Agent 都向同一个 collector 发出 trace
+- **snapcompact snapshots** — the parent checkpoints before the swarm call
+- **pi-mnemopi memory** — sub-agents can read the parent's memory
+- **omp-stats** — all sub-agents emit traces to the same collector
 
-但每个子 Agent 都有自己的：
+But each sub-agent has its **own**:
 
-- **对话历史**（在内存中，不持久化）
-- **压缩状态**（独立）
-- **模型**（可以不同）
-- **工具列表**（可以是子集）
+- **Conversation history** (in-memory, not persisted)
+- **Compaction state** (independent)
+- **Model** (can be different)
+- **Tool list** (can be a subset)
 
-## 配置
+## Configuration
 
 ```json
 {
   "swarm": {
     "enabled": true,
-    "maxConcurrent": 4,            // 同时存在的最大子 Agent 数
-    "maxDepth": 3,                 // 递归上限
-    "defaultTimeout": 300000,      // 5 分钟
-    "defaultTools": [...],         // 子 Agent 默认工具列表
+    "maxConcurrent": 4,            // Max simultaneous sub-agents
+    "maxDepth": 3,                 // Recursion limit
+    "defaultTimeout": 300000,      // 5 minutes
+    "defaultTools": [...],         // Default sub-agent tool list
     "budget": {
       "perSubagent": { "maxCost": 1.00 },
       "perSwarm": { "maxCost": 5.00 },
@@ -472,9 +472,9 @@ flowchart LR
 }
 ```
 
-## 使用案例示例
+## Use case examples
 
-### 1. 多视角代码评审
+### 1. Multi-perspective code review
 
 ```ts
 await swarm.fanOut({
@@ -486,9 +486,9 @@ await swarm.fanOut({
 });
 ```
 
-3 个不同模型评审同一份代码，结果被合并。
+3 different models review the same code, results are merged.
 
-### 2. 并行测试调试
+### 2. Parallel test debugging
 
 ```ts
 const failures = await runTests();
@@ -500,9 +500,9 @@ await swarm.map({
 });
 ```
 
-每个失败的测试由一个独立的子 Agent 调试。
+Each failing test is debugged by a separate sub-agent.
 
-### 3. 多阶段设计
+### 3. Multi-stage design
 
 ```ts
 await swarm.chain({
@@ -514,9 +514,9 @@ await swarm.chain({
 });
 ```
 
-先用便宜模型，再用贵模型 —— 对成本进行了优化。
+Cheap model first, expensive model last — cost-optimized.
 
-### 4. 架构辩论
+### 4. Architecture debate
 
 ```ts
 await swarm.debate({
@@ -527,18 +527,18 @@ await swarm.debate({
 });
 ```
 
-两个子 Agent 互相辩论，然后由一名裁判决定。
+Two sub-agents argue, then a judge decides.
 
-## swarm-extension 中不包含的内容
+## What's NOT in swarm-extension
 
-- **跨主机子 Agent** — 所有子 Agent 都跑在同一个 `omp` 进程中
-- **持久化的子 Agent** — 子 Agent 是临时性的（为本次调用而创建，结束后销毁）
-- **子 Agent 之间的通信** — 子 Agent 只能与父 Agent 通信，不能互相通信
-- **动态子 Agent 创建** — 子 Agent 在蜂群调用时即被创建，而非按需懒创建
+- **Cross-host sub-agents** — all sub-agents run in the same `omp` process
+- **Persistent sub-agents** — sub-agents are ephemeral (created for the call, destroyed after)
+- **Communication between sub-agents** — sub-agents can only talk to the parent, not to each other
+- **Dynamic sub-agent creation** — sub-agents are created at swarm-call time, not lazily
 
-## 下一篇
+## Next
 
-- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — 使用方
-- [pi-wire](/docs/12-pi-wire) — 未来可能用于支持跨主机子 Agent
-- [32 Built-in Tools](/docs/09-tools) — 子 Agent 使用的工具
-- [Deployment](/docs/17-deployment) — 安装 `omp`
+- [pi-coding-agent · CLI](/docs/05-pi-coding-agent) — the consumer
+- [pi-wire](/docs/12-pi-wire) — could enable cross-host sub-agents in the future
+- [32 Built-in Tools](/docs/09-tools) — the tools the sub-agents use
+- [Deployment](/docs/17-deployment) — installing `omp`
